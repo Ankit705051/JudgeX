@@ -4,7 +4,10 @@ import {User} from "../schema/auth.js"
 export const authenticate=async(req,res,next)=>{
     try{
 
-        const token=req.cookies?.token || req.headers.authorization?.replace('Bearer', '');
+        const token =req.cookies?.token || (req.headers.authorization &&
+        req.headers.authorization.startsWith("Bearer ")
+        ? req.headers.authorization.split(" ")[1]
+        : null);
 
         if(!token){
             return res.status(401).json({
@@ -21,14 +24,20 @@ export const authenticate=async(req,res,next)=>{
                 });
             }
             if(!user.isActive){
-                return res.status(401).json({
+                return res.status(403).json({
                     sucess:false,
                     message:"Accountis deactivated",
                 });
             }
+            if(!user.verified){
+                return res.status(403).json({
+                    success:false,
+                message:"Please verify your email"
+                });
+            }
 
-            if(user.Locked){
-                    return res.status(401).json({
+            if(user.isLocked){
+                    return res.status(403).json({
                     sucess:false,
                     message:"Account is temporarily locked due to multiple failed login attempt",
                 });
@@ -67,7 +76,7 @@ export const authenticate=async(req,res,next)=>{
 export const authorize = (...roles) => {
     return (req, res, next) => {
         if (!req.user) {
-            return res.status(401).json({
+            return res.status(403).json({
                 success: false,
                 message: "Access denied. User not authenticated.",
             });

@@ -111,9 +111,9 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
     return await bcrypt.compare(candidatePassword, this.password);
 };
 
-userSchema.virtual('locked').get(function() {
-    return !!(this.lockUntil && this.lockUntil > Date.now());
-});
+userSchema.methods.isLocked = function () {
+    return this.lockUntil && this.lockUntil > Date.now();
+};
 
 
 
@@ -127,7 +127,7 @@ userSchema.methods.incLoginAttempts = async function() {
     
     const updates = { $inc: { loginAttempts: 1 } };
     
-    if (this.loginAttempts + 1 >= 5 && !this.Locked) {
+    if (this.loginAttempts + 1 >= 5 && !this.locked) {
         updates.$set = { lockUntil: Date.now() + 15 * 60 * 1000 }; 
     }
     

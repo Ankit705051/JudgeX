@@ -281,18 +281,24 @@ export const initializeAdmin=async()=>{
 export const createAdmin=async(req,res)=>{
     try{
         const {userName,name,email,password}=req.body;
-        const existingUser=await User.findOne({
-            $or:[{email},{userName}]
-        })
+        if(!userName || !name || !email || !password){
+            return sendError(res,400,"All fields are required");
+        }
+        const query=[];
+        if(email) query.push({email});
+        if(userName) query.push({userName});
+        const existingUser=await User.findOne({$or:query});
         if(existingUser){
             return sendError(res,400,"User already exists");
         }
+
+        const hashedPassword=await bcrypt.hash(password,10);
 
         const adminUser=new User({
             userName,
             name,
             email,
-            password,
+            password:hashedPassword,
             role:'admin',
             verified:true,
         })
@@ -343,7 +349,7 @@ export const registerController=async(req,res)=>{
             userName,
             name,
             email,
-            password,
+            password:hashedPassword,
             verified:false,
             verificationToken
         })
@@ -431,7 +437,13 @@ export const login=async(req,res)=>{
         if(!user){
             return sendError(res,404,"User not found");
         }
-
+        
+        if(user.isActive==false){
+            return sendError(res,404,"Account is disabled");
+        }
+        if(user.isLocked){
+            return sendError(res,404,"Account is locked");
+        }
         const isPasswordValid=await user.comparePassword(password);
         if(!isPasswordValid){
             return sendError(res,401,"Invalid password");
@@ -442,7 +454,7 @@ export const login=async(req,res)=>{
         user.lastLogin = new Date();
         await User.updateOne(
             { _id: user._id },
-            { lastLogin: user.lastLogin }
+            { lastLogin: new Date }
         );
 
         res.cookie("token",token,{
@@ -523,15 +535,16 @@ export const forgatPassword=async(req,res)=>{
         if(!validateEmail(email)){
             return sendError(res,400,"Invalid email format");
         }
+        email=email.trim().toLowerCase();
 
+         if(!req.app.locals.rateLimits){
+             req.app.locals.rateLimits={};
+        }
         const rateLimitKey=`forget_password_${email}`;
-        const lastRequest=req.app.locals.rateLimitKey?.[rateLimitKey];
+        const lastRequest=req.app.locals.rateLimits?.[rateLimitKey];
+
         if(lastRequest && Date.now()-lastRequest<5*60*1000){
             return sendError(res,429,"too many password requests,please try again later.");
-        }
-
-        if(!req.app.locals.rateLimits){
-             req.app.locals.rateLimits={};
         }
         req.app.locals.rateLimits[rateLimitKey] = Date.now();
         
@@ -545,10 +558,10 @@ export const forgatPassword=async(req,res)=>{
         const hashedToken=crypto.createHash("sha256").update(resetToken).digest("hex");
 
         user.resetPasswordToken=hashedToken;
-        user.resetPasswordExpire=Date.now()+15*60*1000;
+        user.resetPasswordExpire=Date.now()+10*60*1000;
         await user.save();
         try {
-             sendPasswordResetEmail(user, resetToken);
+             await sendPasswordResetEmail(user, resetToken);
         } catch (emailError) {
             console.error('Failed to send password reset email:', emailError);
         
@@ -609,7 +622,9 @@ export const updateUser=async(req,res)=>{
             if (!user) {
                 return sendError(res, 404, "User not found");
             }
-            if (name) user.name = name;
+            if (name?.trim){
+                user.name = name.trim();
+            }
             if (email && email !== user.email) {
                 if (!validateEmail(email)) {
                     return sendError(res, 400, "Invalid email format");
@@ -620,12 +635,12 @@ export const updateUser=async(req,res)=>{
                     return sendError(res, 400, "Email already in use");
                 }
                 user.email = email;
-                user.emailVerified = false;
+                user.verified = false;
                 user.verificationToken=generateToken();
             }
            
-            if (currentPassword && newPassword) {
-                const isCurrentPasswordValid = await user.comparePassword(currentPassword);
+            if (currentPassword || newPassword) {
+                const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
                 if (!isCurrentPasswordValid) {
                     return sendError(res, 400, "Current password is incorrect");
                 }
@@ -637,8 +652,8 @@ export const updateUser=async(req,res)=>{
                 if (isSame) {
                     return sendError(res, 400, "New password cannot be same as old password");
                 }
-                
-                user.password = newPassword; 
+                const salt=await bcrypt.genSalt(10);
+                user.password = await bcrypt.hash(newPassword, salt); 
                 user.passwordChangeAt=Date.now();
             }
 
@@ -669,7 +684,7 @@ export const deactivateAdmin =async(req,res)=>{
         const {id}=req.params;
         const admin=await User.findById(id);
         if(!admin){
-            return sendError(400,res,"admin not found");
+            return sendError(res,400,"admin not found");
         }
         if(admin.role!=='admin'){
             return sendError(res,400,"User is not a admin");
