@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { Problem } from "../schema/problem.js";
 
 const sendtError = (res, status, message) => {
@@ -173,5 +174,24 @@ export const getAllProblem=async(req,res)=>{
     }catch(error){
         console.error("error in fetching problems",error);
         return sendtError(res, 500, "Internal server error");
+    }
+}
+
+export const getProblemBySlug=async(req,res)=>{
+    try{
+        const {slug}=req.params;
+        if(!slug){
+            return sendtError(res,400,"slug is required");
+        }
+        const problem=await Problem.findOne({
+            slug:slug.toLowerCase().trim()
+        }).lean();
+        if(!problem){
+            return sendtError(res,404,"Problem not found");
+        }
+        return sendtSuccess(res,200,"Problem retrieved successfully",problem);
+    }catch(error){
+        console.error("error in fetching problem by slug",error);
+        return sendtError(res,500,"Internal server error");
     }
 }
