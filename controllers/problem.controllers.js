@@ -1,4 +1,4 @@
-import { Problem } from "../models/models.problem.js";
+import { Problem } from "../schema/problem.js";
 
 const sendtError = (res, status, message) => {
     return res.status(status).json({
@@ -18,7 +18,7 @@ const sendtSuccess = (res, status, message, data = null) => {
 };
 
 
-const createProblem = async (req, res) => {
+export const createProblem = async (req, res) => {
     try {
         const {
             title,
@@ -36,7 +36,7 @@ const createProblem = async (req, res) => {
             tags,
         } = req.body;
 
-        if (!title || !description || !slug || !constraints || !examples || !codeTemplates || !solutions || !functionName || !parameterTypes || !time_limit || !memory_limit || !difficulty || !tags) {
+        if (!title || !description || !slug || !constraints || !examples || !codeTemplate || !solution || !functionName || !parameterTypes || !timeLimit || !memoryLimit || !difficulty || !tags) {
             return sendtError(res, 400, "Please provide all required fields");
         }
         
@@ -54,8 +54,8 @@ const createProblem = async (req, res) => {
             return sendtError(res, 400, "Examples must be an array");
         }
         
-        if(!Array.isArray(codeTemplates)) {
-            return sendtError(res, 400, "Code templates must be an array");
+        if(!Array.isArray(codeTemplate)) {
+            return sendtError(res, 400, "Code template must be an array");
         }
 
         if(typeof functionName !== "string") {
@@ -92,11 +92,11 @@ const createProblem = async (req, res) => {
         }
 
         if(!Array.isArray(solution)) {
-            return sendtError(res, 400, "Solutions must be an array");
+            return sendtError(res, 400, "Solution must be an array");
         }
 
         for(const solutionItem of solution) {
-            if(!solutionItem.code?.trim()) {
+            if(!solutionItem.solution?.trim()) {
                 return sendtError(res, 400, "Each solution must have code");
             }
             if(!solutionItem.language?.trim()) {
@@ -111,7 +111,7 @@ const createProblem = async (req, res) => {
             constraints,
             examples,
             codeTemplate,
-            solutions,
+            solution,
             functionName,
             parameterTypes,
             timeLimit,
@@ -124,6 +124,54 @@ const createProblem = async (req, res) => {
         
     } catch (error) {
         console.error(error);
+        return sendtError(res, 500, "Internal server error");
+    }
+}
+
+
+export const getAllProblem=async(req,res)=>{
+    try{
+        const page = parseInt(req.query.page) || 1;
+        const limit = Math.min(parseInt(req.query.limit) || 10, 100);
+        const { title,slug,difficulty,tags } = req.query;
+        const skip = (page - 1) * limit;
+
+        const query = {};
+        if(title) {
+            query.title = { $regex: title, $options: "i" };
+        }
+        if(slug) {
+            query.slug = slug;
+        }
+        if(difficulty && ["easy", "medium", "hard"].includes(difficulty)) {
+            query.difficulty = difficulty;
+        }
+        if(tags) {
+            query.tags = { $in: tags.split(",") };
+        }
+
+        const problems = await Problem.find(query)
+        .skip(skip)
+        .limit(limit)
+        .select("-__v")
+        .sort({ createdAt: -1 });
+        const totalProblem=await Problem.countDocuments(query);
+        
+            return sendtSuccess(
+            res,
+            200,
+            "Problems retrieved successfully",
+            {
+                problems,
+                pagination: {
+                    totalProblem,
+                    currentPage: page,
+                    totalPages: Math.ceil(totalProblem / limit)
+                }
+            }
+        );
+    }catch(error){
+        console.error("error in fetching problems",error);
         return sendtError(res, 500, "Internal server error");
     }
 }
