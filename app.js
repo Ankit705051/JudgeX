@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import authRouter from "./routes/auth.routes.js";
 import problemRouter from "./routes/problem.routes.js";
 import TestCaseRouter from  "./routes/test.routes.js";
+import submitCodeRouter  from "./routes/submission.routes.js";
 
 const app=express();
 
@@ -22,6 +23,7 @@ app.use(cookieParser());
 app.use("/api/v1/auth",authRouter);
 app.use("/api/v1/problem",problemRouter);
 app.use("/api/v1/testCase",TestCaseRouter);
+app.use("/api/v1/submission",submitCodeRouter);
 
 app.use((req,res)=>{
     res.status(404).json({
