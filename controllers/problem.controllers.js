@@ -195,3 +195,104 @@ export const getProblemBySlug=async(req,res)=>{
         return sendtError(res,500,"Internal server error");
     }
 }
+
+export const updateProblem = async (req, res) => {
+try {
+const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        return sendtError(res, 400, "Invalid problem id");
+    }
+    const updateData = { ...req.body };
+    if (updateData.title) {
+        updateData.slug = updateData.title
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9\s-]/g, "")
+            .replace(/\s+/g, "-");
+    }
+    if (
+        updateData.difficulty &&
+        !["easy", "medium", "hard"].includes(updateData.difficulty)
+    ) {
+        return sendtError(res, 400, "Invalid difficulty level");
+    }
+    if (
+        updateData.tags &&
+        (!Array.isArray(updateData.tags) ||
+            updateData.tags.length === 0)
+    ) {
+        return sendtError(
+            res,
+            400,
+            "Tags must be a non-empty array"
+        );
+    }
+    if (updateData.title) {
+        const existingTitle = await Problem.findOne({
+            title: updateData.title,
+            _id: { $ne: id }
+        });
+
+        if (existingTitle) {
+            return sendtError(
+                res,
+                409,
+                "Problem title already exists"
+            );
+        }
+    }
+    if (updateData.slug) {
+        const existingSlug = await Problem.findOne({
+            slug: updateData.slug,
+            _id: { $ne: id }
+        });
+
+        if (existingSlug) {
+            return sendtError(
+                res,
+                409,
+                "Problem slug already exists"
+            );
+        }
+    }
+
+    const updatedProblem = await Problem.findByIdAndUpdate(
+        id,
+        updateData,
+        {
+            new: true,
+            runValidators: true
+        }
+    ).select("-__v");
+
+    if (!updatedProblem) {
+        return sendtError(
+            res,
+            404,
+            "Problem not found"
+        );
+    }
+
+    return sendtSuccess(
+        res,
+        200,
+        "Problem updated successfully",
+        updatedProblem
+    );
+
+} catch (error) {
+    console.error(
+        "Error updating problem:",
+        error
+    );
+
+    return sendtError(
+        res,
+        500,
+        "Internal server error"
+    );
+}
+
+};
+
+
