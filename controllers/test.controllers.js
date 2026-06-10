@@ -55,3 +55,49 @@ export const createTestCase = async (req, res) => {
 };
 
 
+export const getTestCases = async (req, res) => {
+    try {
+        const { problemId } = req.params;
+        if (
+            !mongoose.Types.ObjectId.isValid(problemId)
+        ) {
+            return sendError(
+                res,
+                400,
+                "Invalid problem id"
+            );
+        }
+
+        const problem = await Problem.findById(
+            problemId
+        );
+
+        if (!problem) {
+            return sendError(
+                res,
+                404,
+                "Problem not found"
+            );
+        }
+
+        const testCases = await TestCase.find({
+            problemId
+        });
+
+        return sendSuccess(
+            res,
+            200,
+            "Test cases retrieved successfully",
+            testCases
+        );
+
+    } catch (error) {
+        console.error(error);
+
+        return sendError(
+            res,
+            500,
+            "Error retrieving test cases"
+        );
+    }
+};
