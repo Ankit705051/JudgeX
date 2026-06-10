@@ -20,7 +20,7 @@ const exmapleSchema=new mongoose.Schema({
 const codeTemplateSchema = new mongoose.Schema({
     language:{
         type: String,
-        required: true,
+        required:true,
         trim: true,
     },
     starterCode:{
@@ -69,23 +69,21 @@ const problemSchema = new mongoose.Schema({
   },
   tags:{
     type: [String],
-    required: true,
     trim: true,
   },
   constraints:{
     type: String,
     required: true,
     trim: true,
+    minlength: 1,
   },
   timeLimit:{
     type: Number,
-    required: true,
-    trim: true,
-  },
+    required: true
+  },  
   memoryLimit:{
     type: Number,
     required: true,
-    trim: true,
   },
   exmaples:[exmapleSchema],
   codeTemplate:[codeTemplateSchema],
@@ -96,27 +94,26 @@ const problemSchema = new mongoose.Schema({
     trim: true,
   },
   parameterTypes:{
-      types: [String],
+      type: [String],
       required: true,
       trim: true,
   },
   hints:{
-    type:[String],
-    required: true,
+    type:String,
     trim: true,
   },
   createBy:{
-    type: String,
-    required: true,
+    type: mongoose.Schema.Types.ObjectId,
     trim: true,
+    ref: "User",
   },
   updateBy:{
-    type: String,
-    required: true,
+    type: mongoose.Schema.Types.ObjectId,
     trim: true,
+    ref: "User",
   },
   createdAt: Date,
   updatedAt: Date,
 });
 
-export default mongoose.model("Problem", problemSchema);
+export const Problem = mongoose.model("Problem", problemSchema);
