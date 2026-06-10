@@ -154,3 +154,46 @@ export const updateTestCase = async (req, res) => {
         );
     }
 };
+
+export const deleteTestcase=async(req,res)=>{
+    try{
+        const {id}=req.params;
+        if(!mongoose.Types.ObjectId.isValid(id)){
+            return sendError(
+                res,
+                400,
+                "Invalid test case id"
+            );
+        }
+
+        const deletedTestCase = await TestCase.findByIdAndDelete(id);
+
+        if (!deletedTestCase) {
+            return sendError(
+                res,
+                404,
+                "Test case not found"
+            );
+        }
+
+        return sendSuccess(
+            res,
+            200,
+            "Test case deleted successfully",
+            deletedTestCase
+        );
+
+    }catch(error){
+         console.error(
+            "Error deleting test case:",
+            error
+        );
+
+        return sendError(
+            res,
+            500,
+            "Internal server error"
+        );
+
+    }
+}
