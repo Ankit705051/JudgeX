@@ -1,74 +1,80 @@
 import jwt from "jsonwebtoken";
 import {User} from "../schema/auth.js"
 
-export const authenticate=async(req,res,next)=>{
-    try{
+export const authenticate = async (req, res, next) => {
+    try {
+        const token =
+            req.cookies?.token ||
+            (
+                req.headers.authorization?.startsWith("Bearer ")
+                    ? req.headers.authorization.split(" ")[1]
+                    : null
+            );
 
-        const token =req.cookies?.token || (req.headers.authorization &&
-        req.headers.authorization.startsWith("Bearer ")
-        ? req.headers.authorization.split(" ")[1]
-        : null);
-
-        if(!token){
+        if (!token) {
             return res.status(401).json({
-                sucess:false,
-                message:"No token provided,authorisation denied",
-            });
-            const decoded=jwt.verify(token,process.env.JWT_SECRET);
-            const user=await User.findById(decoded.userId || decoded.id).select("-password");
-
-            if(!user){
-                return res.status(401).json({
-                    sucess:false,
-                    message:"User not found",
-                });
-            }
-            if(!user.isActive){
-                return res.status(403).json({
-                    sucess:false,
-                    message:"Accountis deactivated",
-                });
-            }
-            if(!user.verified){
-                return res.status(403).json({
-                    success:false,
-                message:"Please verify your email"
-                });
-            }
-
-            if(user.isLocked){
-                    return res.status(403).json({
-                    sucess:false,
-                    message:"Account is temporarily locked due to multiple failed login attempt",
-                });
-            }
-
-            req.user=user;
-            req.userId=user._id;
-            next();
-        }
-    }catch(error){
-         if (error.name === "JsonWebTokenError") {
-            return res.status(401).json({
-              success:false,
-                message: "Invalid token",
+                success: false,
+                message: "No token provided"
             });
         }
+
+        const decoded = jwt.verify(
+            token,
+            process.env.JWT_SECRET
+        );
+
+        const user = await User.findById(
+            decoded.userId || decoded.id
+        ).select("-password");
+
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        if (!user.isActive) {
+            return res.status(403).json({
+                success: false,
+                message: "Account is deactivated"
+            });
+        }
+
+        if (user.isLocked()) {
+            return res.status(403).json({
+                success: false,
+                message: "Account is locked"
+            });
+        }
+
+        req.user = user;
+        req.userId = user._id;
+
+        next();
+
+    } catch (error) {
+
+        if (error.name === "JsonWebTokenError") {
+            return res.status(401).json({
+                success: false,
+                message: "Invalid token"
+            });
+        }
+
         if (error.name === "TokenExpiredError") {
             return res.status(401).json({
-                success:false,
-                message: "Token expired",
+                success: false,
+                message: "Token expired"
             });
         }
-        console.log(' Unknown auth error:', error);
-        res.status(500).json({
-            success: false,
-            message: "Error authenticating user",
-            error: error.message,
-        });
 
+        return res.status(500).json({
+            success: false,
+            message: "Authentication failed"
+        });
     }
-}
+};
 
 
 
