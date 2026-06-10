@@ -40,7 +40,7 @@ export const createTestCase = async (req, res) => {
          if(!existingProblem){
             return sendError(res,400,"problem does not exist");
          }
-
+        await testCase.save();
 
      return sendSuccess(
     res,
@@ -98,6 +98,59 @@ export const getTestCases = async (req, res) => {
             res,
             500,
             "Error retrieving test cases"
+        );
+    }
+};
+
+
+export const updateTestCase = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return sendError(
+                res,
+                400,
+                "Invalid test case id"
+            );
+        }
+
+        const updatedTestCase =
+            await TestCase.findByIdAndUpdate(
+                id,
+                req.body,
+                {
+                    new: true,
+                    runValidators: true
+                }
+            );
+
+        if (!updatedTestCase) {
+            return sendError(
+                res,
+                404,
+                "Test case not found"
+            );
+        }
+        await updatedTestCase.save();
+
+        return sendSuccess(
+            res,
+            200,
+            "Test case updated successfully",
+            updatedTestCase
+        );
+
+    } catch (error) {
+        console.error(
+            "Error updating test case:",
+            error
+        );
+
+        return sendError(
+            res,
+            500,
+            "Internal server error"
         );
     }
 };
