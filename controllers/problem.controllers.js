@@ -296,3 +296,19 @@ const { id } = req.params;
 };
 
 
+export const deleteProblem = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return sendtError(res, 400, "Invalid problem id");
+        }
+        const deletedProblem = await Problem.findByIdAndDelete(id);
+        if (!deletedProblem) {
+            return sendtError(res, 404, "Problem not found");
+        }
+        return sendtSuccess(res, 200, "Problem deleted successfully", deletedProblem);
+    } catch (error) {
+        console.error("Error deleting problem:", error);
+        return sendtError(res, 500, "Internal server error");
+    }
+};
