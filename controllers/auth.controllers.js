@@ -3,6 +3,7 @@ import {User} from "../schema/auth.js";
 import jwt from "jsonwebtoken";
 import crypto, { verify } from "crypto";
 import nodemailer from "nodemailer";
+import bcrypt from "bcryptjs";
 
 const generateToken=(userId)=>{
     return jwt.sign({userId},process.env.JWT_SECRET,{
@@ -343,7 +344,7 @@ export const registerController=async(req,res)=>{
                 await User.deleteOne({_id:existingUser._id});
             }
         }
-
+       const hashedPassword = await bcrypt.hash(password, 10);
         const verificationToken=crypto.randomBytes(32).toString("hex");
         const newUser=new User({
             userName,
@@ -441,7 +442,7 @@ export const login=async(req,res)=>{
         if(user.isActive==false){
             return sendError(res,404,"Account is disabled");
         }
-        if(user.isLocked){
+        if(!user.isLocked){
             return sendError(res,404,"Account is locked");
         }
         const isPasswordValid=await user.comparePassword(password);
@@ -599,7 +600,7 @@ export const resetPassword=async(req,res)=>{
             return sendError(res, 400, "Invalid or expired reset token");
         }
         
-        user.password = password; 
+        user.password =await bcrypt.hash(password, 10); 
         user.resetPasswordToken = undefined;
         user.resetPasswordExpire = undefined;
         user.passwordChangeAt = Date.now();
