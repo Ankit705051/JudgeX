@@ -60,3 +60,64 @@ export const submitCode = async (req, res) => {
         return sendtError(res,500,"Failed to create submission");
     }
 };
+
+
+export const getSubmissionById = async (req, res) => {
+    try {
+        const submissionId = req.params.id;
+        if (!mongoose.Types.ObjectId.isValid(submissionId)) {
+            return sendtError(res,400,"Invalid submission id");
+        }
+        const submission = await Submission.findById(submissionId)
+            .populate("userId","name email")
+            .populate("problemId","title difficulty")
+            .lean();
+        if (!submission) {
+            return sendtError(res,404,"Submission not found");
+        }
+        return sendtSuccess(res,200,"Submission found",submission);
+    } catch (error) {
+        console.error(
+            "Error getting submission:",
+            error
+        );
+        return sendtError(res,500,"Failed to get submission");
+    }
+};
+
+export const getMySubmissions = async (req, res) => {
+    try {
+        const userId = req.userId;
+        const page = parseInt(req.query.page) || 1;
+        const limit = Math.min(
+        parseInt(req.query.limit) || 20,
+        100
+       );
+       const skip = (page - 1) * limit;
+        const submissions = await Submission.find({ userId })
+            .populate("problemId","title difficulty")
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean();
+
+        const totalSubmissions = await Submission.countDocuments({ userId });
+        return sendtSuccess(res,200,"Submissions found",{
+           submissions,
+                pagination: {
+                    totalSubmissions,
+                    currentPage: page,
+                    totalPages: Math.ceil(
+                        totalSubmissions / limit
+                    ),
+                    limit
+                }
+        });
+    } catch (error) {
+        console.error(
+            "Error getting submissions:",
+            error
+        );
+        return sendtError(res,500,"Failed to get submissions");
+    }
+};
