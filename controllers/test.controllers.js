@@ -1,28 +1,13 @@
-import mongoose from "mongoose";
 import { Problem } from "../schema/problem.js";
 import { TestCase } from "../schema/testcase.js";
-
-const sendError = (res, status, message) => {
-    return res.status(status).json({
-        success: false,
-        message
-    });
-};
-
-const sendSuccess = (res, status, message, data = null) => {
-    const response = {
-        success: true,
-        message
-    };
-    if (data) {
-        response.data = data;
-    }
-    return res.status(status).json(response);
-};
-
+import { sendSuccess,sendError } from "../utils/response.js";
 export const createTestCase = async (req, res) => {
     try {
-        const { problemId, input, output, explanation, isHidden } = req.body;
+        const { problemId, input, output, explanation, isHidden } = req.validated.body;
+        const problem=await Problem.findById(problemId);
+        if(!problem){
+            return sendError(res,404,"problem not found");
+        }
         const testCase = new TestCase({
             problemId,
             input,
@@ -30,16 +15,6 @@ export const createTestCase = async (req, res) => {
             explanation,
             isHidden
         });
-         if(!problemId || !input || !output  ){
-            return sendError(res,400,"please provide all required fields");
-         }
-         if(!mongoose.Types.ObjectId.isValid(problemId)){
-            return sendError(res, 400, "Invalid problem id");
-         }
-         const existingProblem=await Problem.findById(problemId);
-         if(!existingProblem){
-            return sendError(res,400,"problem does not exist");
-         }
         await testCase.save();
 
      return sendSuccess(
@@ -57,17 +32,7 @@ export const createTestCase = async (req, res) => {
 
 export const getTestCases = async (req, res) => {
     try {
-        const { problemId } = req.params;
-        if (
-            !mongoose.Types.ObjectId.isValid(problemId)
-        ) {
-            return sendError(
-                res,
-                400,
-                "Invalid problem id"
-            );
-        }
-
+        const { problemId } = req.validated.params;
         const problem = await Problem.findById(
             problemId
         );
@@ -79,11 +44,9 @@ export const getTestCases = async (req, res) => {
                 "Problem not found"
             );
         }
-
         const testCases = await TestCase.find({
             problemId
         });
-
         return sendSuccess(
             res,
             200,
@@ -93,7 +56,6 @@ export const getTestCases = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-
         return sendError(
             res,
             500,
@@ -102,23 +64,13 @@ export const getTestCases = async (req, res) => {
     }
 };
 
-
 export const updateTestCase = async (req, res) => {
     try {
-        const { id } = req.params;
-
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return sendError(
-                res,
-                400,
-                "Invalid test case id"
-            );
-        }
-
+        const { id } = req.validated.params;
         const updatedTestCase =
             await TestCase.findByIdAndUpdate(
                 id,
-                req.body,
+                req.validated.body,
                 {
                     new: true,
                     runValidators: true
@@ -132,8 +84,6 @@ export const updateTestCase = async (req, res) => {
                 "Test case not found"
             );
         }
-        await updatedTestCase.save();
-
         return sendSuccess(
             res,
             200,
@@ -146,7 +96,6 @@ export const updateTestCase = async (req, res) => {
             "Error updating test case:",
             error
         );
-
         return sendError(
             res,
             500,
@@ -157,17 +106,8 @@ export const updateTestCase = async (req, res) => {
 
 export const deleteTestcase=async(req,res)=>{
     try{
-        const {id}=req.params;
-        if(!mongoose.Types.ObjectId.isValid(id)){
-            return sendError(
-                res,
-                400,
-                "Invalid test case id"
-            );
-        }
-
+        const {id}=req.validated.params;
         const deletedTestCase = await TestCase.findByIdAndDelete(id);
-
         if (!deletedTestCase) {
             return sendError(
                 res,
@@ -175,20 +115,17 @@ export const deleteTestcase=async(req,res)=>{
                 "Test case not found"
             );
         }
-
         return sendSuccess(
             res,
             200,
             "Test case deleted successfully",
             deletedTestCase
         );
-
     }catch(error){
          console.error(
             "Error deleting test case:",
             error
         );
-
         return sendError(
             res,
             500,

@@ -5,6 +5,8 @@ import crypto, { verify } from "crypto";
 import nodemailer from "nodemailer";
 import bcrypt from "bcryptjs";
 
+import { sendSuccess, sendError } from "../utils/response.js";
+
 const generateToken=(userId)=>{
     return jwt.sign({userId},process.env.JWT_SECRET,{
         expiresIn: "7d",
@@ -23,24 +25,6 @@ const validateEmail=(email)=>{
 const validatePassword=(password)=>{
      const passwordRegex=/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
      return passwordRegex.test(password) && password.length >= 8;
-}
-
-const sendError=(res, status, message)=>{
-    return res.status(status).json({
-        success: false,
-        message
-    });
-}
-
-const sendSuccess=(res, status, message, data=null)=>{
-    const response={
-        success: true,
-        message
-    };
-    if(data){
-        response.data=data;
-    }
-    return res.status(status).json(response);
 }
 
 const createTransporter=()=>{
@@ -276,12 +260,13 @@ export const initializeAdmin=async()=>{
         }
     }catch(error){
         console.error('Error initializing admin account:', error);
+
     }
 }
 
 export const createAdmin=async(req,res)=>{
     try{
-        const {userName,name,email,password}=req.body;
+        const {userName,name,email,password}=req.validated.body;
         if(!userName || !name || !email || !password){
             return sendError(res,400,"All fields are required");
         }
@@ -315,24 +300,7 @@ export const createAdmin=async(req,res)=>{
 export const registerController=async(req,res)=>{
     try{
 
-        const {userName,name,email,password}=req.body;
-
-        if(!userName || !name || !email || !password){
-            return sendError(res,400,"please fill all required fields");
-        }
-
-        if(!validateEmail(email)){
-            return sendError(res,400,"invalid email formate");
-        }
-        if(userName.length<3){
-            return sendError(res,400,"Username must be at least 3 characters long");
-
-        }
-
-        if(!validatePassword(password)){
-            return sendError(res, 400, "PPassword must contain at least 8 characters, one uppercase, one lowercase, one number and one special character");
-        }
-
+        const {userName,name,email,password}=req.validated.body;
         const existingUser=await User.findOne({
             $or:[{email},{userName}]
         });
@@ -384,11 +352,7 @@ export const registerController=async(req,res)=>{
 
 export const verifyUser=async(req,res)=>{
       try{
-        const {verificationToken}=req.params;
-
-        if(!verificationToken){
-            return sendError(res,400,"Invalid verification token");
-        }
+        const {verificationToken}=req.validated.params;
         const user=await User.findOne({verificationToken});
         if(!user){
             return sendError(res,404,"Invalid or expired verification token");
@@ -426,11 +390,7 @@ export const verifyUser=async(req,res)=>{
 
 export const login=async(req,res)=>{
     try{
-        const {userName,email,password}=req.body;
-        if(!password || (!email && !userName)){
-            return sendError(res,400,"Please provide password and either email or username");
-        }
-
+        const {userName,email,password}=req.validated.body;
         const user=await User.findOne({
             $or:[{email},{userName}]
         }).select('+password');
@@ -529,7 +489,7 @@ export const getUser=async(req,res)=>{
 
 export const forgatPassword=async(req,res)=>{
     try{
-        const {email}=req.body;
+        const {email}=req.validated.body;
         if(!email){
             return sendError(res,400,"Email is required");
         }
@@ -577,7 +537,7 @@ export const forgatPassword=async(req,res)=>{
 
 export const resetPassword=async(req,res)=>{
     try{
-        const {token}=req.params;
+        const {token}=req.validated.params;
         const {password,confirmPassword}=req.body;
 
         if(!password || !confirmPassword){
@@ -618,7 +578,7 @@ export const resetPassword=async(req,res)=>{
 
 export const updateUser=async(req,res)=>{
     try{
-        const {name,email,currentPassword,newPassword}=req.body;
+        const {name,email,currentPassword,newPassword}=req.validated.body;
         const user = await User.findById(req.user.id).select('+password');
             if (!user) {
                 return sendError(res, 404, "User not found");
@@ -682,7 +642,7 @@ export const updateUser=async(req,res)=>{
 
 export const deactivateAdmin =async(req,res)=>{
     try{
-        const {id}=req.params;
+        const {id}=req.validated.params;
         const admin=await User.findById(id);
         if(!admin){
             return sendError(res,400,"admin not found");
@@ -704,7 +664,7 @@ export const deactivateAdmin =async(req,res)=>{
 
 export const activateAdmin=async(req,res)=>{
     try{
-        const{id}=req.params;
+        const{id}=req.validated.params;
         const admin=await User.findById(id);
         if(!admin){
             return sendError(res,400,"Admin not found");

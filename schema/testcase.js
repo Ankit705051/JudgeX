@@ -10,11 +10,13 @@ const testCaseSchema=new mongoose.Schema({
     input:{
         type: String,
         required: true,
+        minlength: 1,
         trim: true,
     },
     output:{
         type: String,
         required: true,
+        minlength: 1,
         trim: true,
     },
     explanation:{

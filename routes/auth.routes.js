@@ -13,16 +13,22 @@ import {
     activateAdmin
 } from "../controllers/auth.controllers.js";
 import { authenticate, authorize } from "../middleware/auth.middleware.js";
-
+import { validate } from "../middleware/validate.middleware.js";
+import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, updateUserSchema, createAdminSchema, objectIdSchema, userIdParamSchema, verifyTokenSchema, resetTokenParamSchema   } from "../validation/auth.validate.js";
 const router = express.Router();
 
-router.post("/register", registerController);
-router.post("/login", login);
+router.post("/register", validate(registerSchema), registerController);
+router.post("/login", validate(loginSchema), login);
 router.post("/logout", logout);
-router.get("/verify/:verificationToken", verifyUser);
-router.post("/forgot-password", forgatPassword);
-router.post("/reset-password/:token", resetPassword);
-router.get("/reset-password/:token", (req, res) => {
+router.get("/verify/:verificationToken", validate(verifyTokenSchema,"params"), verifyUser);
+router.post("/forgot-password", validate(forgotPasswordSchema), forgatPassword);
+router.post(
+    "/reset-password/:token",
+    validate(resetTokenParamSchema, "params"),
+    validate(resetPasswordSchema, "body"),
+    resetPassword
+);
+router.get("/reset-password/:token", validate(resetTokenParamSchema,"params"), (req, res) => {
 
     const { token } = req.params;
 
@@ -90,10 +96,22 @@ router.get("/reset-password/:token", (req, res) => {
 
 
 router.get("/user",authenticate, getUser);
-router.put("/user",authenticate, updateUser);
-router.post("/admin",authenticate,authorize("admin"), createAdmin);
-router.put("/admin/deactivate/:id",authenticate,authorize("admin"), deactivateAdmin);
-router.put("/admin/activate/:id",authenticate,authorize("admin"), activateAdmin);
+router.put("/user",authenticate,validate(updateUserSchema), updateUser);
+router.post("/admin",authenticate,authorize("admin"), validate(createAdminSchema), createAdmin);
+router.patch(
+    "/admin/deactivate/:id",
+    authenticate,
+    authorize("admin"),
+    validate(userIdParamSchema, "params"),
+    deactivateAdmin
+);
+router.patch(
+    "/admin/activate/:id",
+    authenticate,
+    authorize("admin"),
+    validate(userIdParamSchema, "params"),
+    activateAdmin
+);
 
 
 
