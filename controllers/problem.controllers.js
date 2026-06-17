@@ -1,4 +1,3 @@
-import mongoose from "mongoose";
 import { Problem } from "../schema/problem.js";
 import { sendSuccess, sendError } from "../utils/response.js";
 
@@ -226,7 +225,7 @@ export const updateProblem = async (req, res) => {
 
 export const deleteProblem = async (req, res) => {
     try {
-        const { id } = req.validatedparams;
+        const { id } = req.validated.params;
         const deletedProblem = await Problem.findByIdAndDelete(id);
         if (!deletedProblem) {
             return sendError(res, 404, "Problem not found");

@@ -25,6 +25,11 @@ app.use("/api/v1/problem",problemRouter);
 app.use("/api/v1/testCase",TestCaseRouter);
 app.use("/api/v1/submission",submitCodeRouter);
 
+app.get("/",(req,res)=>{
+    res.send("Hello World");
+});
+
+
 app.use((req,res)=>{
     res.status(404).json({
         success:false,

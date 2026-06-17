@@ -6,16 +6,38 @@ import {validate} from "../middleware/validate.middleware.js";
 
 const router=express.Router();
 
-router.post("/problem/:problemId",validate(createTestCaseSchema),authenticate,authorize("admin"),createTestCase)
-router.get("/problem/:problemId",validate(getTestCasesSchema,"params"),authenticate,authorize("admin"),getTestCases)
+router.post(
+    "/problem/:problemId",
+    authenticate,
+    authorize("admin"),
+    validate(getTestCasesSchema, "params"),
+    validate(createTestCaseSchema, "body"),
+    createTestCase
+);
+
+router.get(
+    "/problem/:problemId",
+    authenticate,
+    authorize("admin"),
+    validate(getTestCasesSchema, "params"),
+    getTestCases
+);
+
 router.put(
     "/:id",
     authenticate,
     authorize("admin"),
-    validate(testCaseIdSchema,"params"),
+    validate(testCaseIdSchema, "params"),
     validate(updateTestCaseSchema, "body"),
     updateTestCase
 );
-router.delete("/:id",validate(deleteTestCaseSchema,"params"),authenticate,authorize("admin"),deleteTestcase)
+
+router.delete(
+    "/:id",
+    authenticate,
+    authorize("admin"),
+    validate(deleteTestCaseSchema, "params"),
+    deleteTestcase
+);
 
 export default router;  

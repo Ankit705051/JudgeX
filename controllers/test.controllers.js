@@ -3,7 +3,8 @@ import { TestCase } from "../schema/testcase.js";
 import { sendSuccess,sendError } from "../utils/response.js";
 export const createTestCase = async (req, res) => {
     try {
-        const { problemId, input, output, explanation, isHidden } = req.validated.body;
+        const { problemId } = req.validated.params;
+        const { input, output, explanation, isHidden } = req.validated.body;
         const problem=await Problem.findById(problemId);
         if(!problem){
             return sendError(res,404,"problem not found");

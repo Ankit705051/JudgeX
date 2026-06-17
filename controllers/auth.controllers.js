@@ -1,7 +1,7 @@
 import {User} from "../schema/auth.js";
 
 import jwt from "jsonwebtoken";
-import crypto, { verify } from "crypto";
+import crypto from "crypto";
 import nodemailer from "nodemailer";
 import bcrypt from "bcryptjs";
 
@@ -278,13 +278,12 @@ export const createAdmin=async(req,res)=>{
             return sendError(res,400,"User already exists");
         }
 
-        const hashedPassword=await bcrypt.hash(password,10);
 
         const adminUser=new User({
             userName,
             name,
             email,
-            password:hashedPassword,
+            password,
             role:'admin',
             verified:true,
         })
@@ -312,13 +311,12 @@ export const registerController=async(req,res)=>{
                 await User.deleteOne({_id:existingUser._id});
             }
         }
-       const hashedPassword = await bcrypt.hash(password, 10);
         const verificationToken=crypto.randomBytes(32).toString("hex");
         const newUser=new User({
             userName,
             name,
             email,
-            password:hashedPassword,
+            password,
             verified:false,
             verificationToken
         })
@@ -390,7 +388,11 @@ export const verifyUser=async(req,res)=>{
 
 export const login=async(req,res)=>{
     try{
-        const {userName,email,password}=req.validated.body;
+        const {userName,email,password}=req.body;
+        if(!password || (!email && !userName)){
+            return sendError(res,400,"Please provide password and either email or username");
+        }
+
         const user=await User.findOne({
             $or:[{email},{userName}]
         }).select('+password');
@@ -398,11 +400,17 @@ export const login=async(req,res)=>{
         if(!user){
             return sendError(res,404,"User not found");
         }
+        console.log("LOGIN INPUT:", email, userName, password);
+        console.log("FOUND USER:", user);
+        console.log("DB PASSWORD:", user?.password);
+
+        const isMatch = await user.comparePassword(password);
+        console.log("PASSWORD MATCH:", isMatch);
         
         if(user.isActive==false){
             return sendError(res,404,"Account is disabled");
         }
-        if(!user.isLocked){
+        if(user.isLocked()){
             return sendError(res,404,"Account is locked");
         }
         const isPasswordValid=await user.comparePassword(password);
@@ -415,7 +423,7 @@ export const login=async(req,res)=>{
         user.lastLogin = new Date();
         await User.updateOne(
             { _id: user._id },
-            { lastLogin: new Date }
+            { lastLogin: new Date() }
         );
 
         res.cookie("token",token,{
@@ -489,7 +497,7 @@ export const getUser=async(req,res)=>{
 
 export const forgatPassword=async(req,res)=>{
     try{
-        const {email}=req.validated.body;
+        let {email}=req.validated.body;
         if(!email){
             return sendError(res,400,"Email is required");
         }
@@ -538,7 +546,7 @@ export const forgatPassword=async(req,res)=>{
 export const resetPassword=async(req,res)=>{
     try{
         const {token}=req.validated.params;
-        const {password,confirmPassword}=req.body;
+        const {password,confirmPassword}=req.validated.body;
 
         if(!password || !confirmPassword){
             return sendError(res,400,"Password and confirm password are required");
@@ -550,7 +558,6 @@ export const resetPassword=async(req,res)=>{
         if(!validatePassword(password)){
              return sendError(res, 400, "Password must be at least 8 characters long one digit,one special char,one upercase,one lowercase");
         }
-        const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
         const user = await User.findOne({
             resetPasswordToken: hashedToken,
             resetPasswordExpire: { $gt: Date.now() }
@@ -560,7 +567,7 @@ export const resetPassword=async(req,res)=>{
             return sendError(res, 400, "Invalid or expired reset token");
         }
         
-        user.password =await bcrypt.hash(password, 10); 
+        user.password =password;
         user.resetPasswordToken = undefined;
         user.resetPasswordExpire = undefined;
         user.passwordChangeAt = Date.now();
@@ -583,7 +590,7 @@ export const updateUser=async(req,res)=>{
             if (!user) {
                 return sendError(res, 404, "User not found");
             }
-            if (name?.trim){
+            if (name?.trim()){
                 user.name = name.trim();
             }
             if (email && email !== user.email) {
@@ -613,8 +620,7 @@ export const updateUser=async(req,res)=>{
                 if (isSame) {
                     return sendError(res, 400, "New password cannot be same as old password");
                 }
-                const salt=await bcrypt.genSalt(10);
-                user.password = await bcrypt.hash(newPassword, salt); 
+                user.password = password; 
                 user.passwordChangeAt=Date.now();
             }
 

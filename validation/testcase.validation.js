@@ -2,7 +2,6 @@ import { z } from "zod";
 import { ObjectIdSchema } from "./objectId.js";
 
 export const createTestCaseSchema = z.object({
-    problemId: ObjectIdSchema,
     input:z
     .string()
     .trim()

@@ -2,11 +2,19 @@ import { Submission } from "../schema/submission.js";
 import { Problem } from "../schema/problem.js";
 import mongoose from "mongoose";        
 import { sendSuccess,sendError } from "../utils/response.js";
+import { judgeSubmission } from "../services/judegXsubmission.js";
 
 export const submitCode = async (req, res) => {
     try {
         const userId = req.user._id;
         const { problemId, code, language } = req.validated.body;
+
+
+        console.log("RECEIVED problemId:", problemId);
+
+const exists = await Problem.findById(problemId);
+
+console.log("PROBLEM FOUND:", exists);
         const problem = await Problem.findById(problemId)
             .select("_id")
             .lean();
@@ -19,9 +27,17 @@ export const submitCode = async (req, res) => {
             problemId,
             code: code.trim(),
             language,
-            status: "pending"
+            status: "pending",
+            passedTestCases: 0,
+            totalTestCases: 0,
+            accepted: false,
         });
-        return sendSuccess(res,201,"Submission created successfully",submission);
+        await judgeSubmission(submission._id);
+        const updatedSubmission =
+            await Submission.findById(
+                submission._id
+            );
+        return sendSuccess(res,201,"Submission created successfully",updatedSubmission);
     } catch (error) {
         console.error(
             "Error creating submission:",
@@ -54,7 +70,7 @@ export const getSubmissionById = async (req, res) => {
 
 export const getMySubmissions = async (req, res) => {
     try {
-        const userId = req.validated.userId;
+        const userId = req.user._id;
         const page = parseInt(req.validated.query.page) || 1;
         const limit = Math.min(
         parseInt(req.validated.query.limit) || 20,
