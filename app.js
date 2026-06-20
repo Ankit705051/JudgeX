@@ -5,12 +5,13 @@ import authRouter from "./routes/auth.routes.js";
 import problemRouter from "./routes/problem.routes.js";
 import TestCaseRouter from  "./routes/test.routes.js";
 import submitCodeRouter  from "./routes/submission.routes.js";
+import contestRouter from "./routes/contest.routes.js";
 
 const app=express();
 
 
 app.use(cors({
-    origin:["http://localhost:3000"],
+    origin:["http://localhost:5173"],
     credentials:true,
 }));
 
@@ -24,6 +25,7 @@ app.use("/api/v1/auth",authRouter);
 app.use("/api/v1/problem",problemRouter);
 app.use("/api/v1/testCase",TestCaseRouter);
 app.use("/api/v1/submission",submitCodeRouter);
+app.use("/api/v1/contest",contestRouter);
 
 app.get("/",(req,res)=>{
     res.send("Hello World");
