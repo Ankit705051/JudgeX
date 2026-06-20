@@ -16,7 +16,7 @@ const contestSchem=new mongoose.Schema({
     ref:"user",
     required:true,
     },
-    stratTime:{
+    startTime:{
         type:Date,
         required:true,
     },
@@ -25,23 +25,23 @@ const contestSchem=new mongoose.Schema({
         required:true,
     },
     duration:{
-        tyep:Number,
+        type:Number,
         required:true
     },
     visibility:{
         type:String,
         enum:["public","contest"],
-        defualt:"prublic",
+        default:"public",
 
     },
     status:{
         type:String,
         enum:["upcoming","running","ended"],
-        defualt:"upcoming",
+        default:"upcoming",
     },
     totalParticipants:{
         type:Number,
-        defualt:0,
+        default:0,
     }
 },{timestamps:true}
 )
