@@ -8,7 +8,7 @@ const contestProblemSchema=new mongoose.Schema({
     },
     problemId:{
         type:mongoose.Schema.Types.ObjectId,
-        ref:"problem",
+        ref:"Problem",
         required:true,
     },
     problemCode:{
