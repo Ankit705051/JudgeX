@@ -6,7 +6,8 @@ import problemRouter from "./routes/problem.routes.js";
 import TestCaseRouter from  "./routes/test.routes.js";
 import submitCodeRouter  from "./routes/submission.routes.js";
 import contestRouter from "./routes/contest.routes.js";
-
+import  contestProblemRouter from "./routes/problemContest.routes.js";
+import contestParticipantRouter from "./routes/contestParticipant.routes.js";
 const app=express();
 
 
@@ -26,6 +27,8 @@ app.use("/api/v1/problem",problemRouter);
 app.use("/api/v1/testCase",TestCaseRouter);
 app.use("/api/v1/submission",submitCodeRouter);
 app.use("/api/v1/contest",contestRouter);
+app.use("/api/v1/contestProblem",contestProblemRouter);
+app.use("/api/v1/contestRegister",contestParticipantRouter);
 
 app.get("/",(req,res)=>{
     res.send("Hello World");
