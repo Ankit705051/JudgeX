@@ -1,7 +1,8 @@
 import { contest } from "../schema/contest.js";
 import { sendSuccess,sendError } from "../utils/response.js";  
 import { contestParticipant } from "../schema/contestParticipant.js";
-import { User } from "../schema/auth.js";
+import { getUserRank, getLeaderboard } from "../services/leaderboard.service.js";
+import { truncates } from "bcryptjs";
 
 export const contestRegister=async(req,res)=>{
     try{
@@ -31,7 +32,9 @@ export const contestRegister=async(req,res)=>{
             {
                 $inc:{
                     totalParticipants:1
-                }
+                },
+            },{
+                new:true
             }
         )
         return sendSuccess(
@@ -40,7 +43,7 @@ export const contestRegister=async(req,res)=>{
             "contest participant registered successfully",
             { 
                 register,
-                totalParticipants:updatedContest.totalParticipants
+                totalParticipants:updatedContest.totalParticipants,
             }
 
         );
@@ -72,7 +75,7 @@ export const getContestParticipants=async(req,res)=>{
         }
 
         const participant=await contestParticipant.find({contestId})
-        .populate("userId","username email")
+        .populate("userId","userName email")
         .skip(skip)
         .limit(limit)
         .sort({createdAt:-1})
@@ -106,7 +109,7 @@ export const getMyContestParticipants=async(req,res)=>{
         const{contestId}=req.validated.params;
         const userId=req.user._id;
         const participant=await contestParticipant.findOne({contestId,userId})
-        .populate("userId","username email")
+        .populate("userId","userName email")
         .populate("contestId","title description");
         if(!participant){
             return sendError(res,404,"participant not found");
@@ -130,44 +133,21 @@ export const contestLeaderboard=async(req,res)=>{
     try{
         const{contestId}=req.validated.params;
         const {page=1,limit=10}=req.validated.query;
-        const skip=(page-1)*limit;
         const contestdata=await contest.findById(contestId);
         if(!contestdata){
             return sendError(res,404,"contest not found");
         }
-        const participants=await contestParticipant
-        .find({contestId})
-        .populate(
-            "userId","username email",
-        )
-        .sort({
-            score:-1,
-            createdAt:1
-        })
-        .skip(skip)
-        .limit(limit)
-        .lean();
-        const totalParticipants=await contestParticipant.countDocuments({contestId});
-
-        const leaderboard=participants.map((participant,index)=>{
-            return {
-                ...participant,
-                rank:skip+index+1,
-                
-            }
-        })
+        const leaderboard=await getLeaderboard(
+            contestId,
+            Number(page),
+            Number(limit)   
+        );
         return sendSuccess(
             res,
             200,
             "leaderboard retrieved successfully",
             {
-                leaderboard,
-                pagination:{
-                    totalParticipants,
-                    currentPage:page,
-                    totalPages:Math.ceil(totalParticipants/limit),
-                    limit
-                }
+                leaderboard
             }
         );  
     }catch(error){
@@ -180,6 +160,24 @@ export const contestLeaderboard=async(req,res)=>{
     }
 }
 
+export const getMyRank=async(req,res)=>{
+    try{
+    const {contestId}=req.validated.params;
+    const userId=req.user._id;
+    const rank=await getUserRank(contestId,userId);
+    return sendSuccess(
+        res,
+        200,
+        "rank retrieved successfully",
+        {
+            rank
+        }
+    );
+  }catch(error){
+    console.error(error);
+    return sendError(res,500,"internal server error ");
+  }
+}
 
 export const deleteMyContestParticipant = async (req, res) => {
     try {
@@ -237,3 +235,5 @@ export const deleteMyContestParticipant = async (req, res) => {
         );
     }
 };
+
+

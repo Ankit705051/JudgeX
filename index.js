@@ -1,7 +1,11 @@
 import "dotenv/config";
 import app from "./app.js";
-import connectDB from "./database/db.js";
+import {connectDB} from "./database/db.js";
 import { initializeAdmin } from "./controllers/auth.controllers.js";
+import http from "http";
+import { initSocket } from "./socket/socket.js";
+const server=http.createServer(app);
+initSocket(server);
 
 const PORT=process.env.PORT || 3000;
 

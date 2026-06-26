@@ -1,8 +1,7 @@
 import { Submission } from "../schema/submission.js";
 import { Problem } from "../schema/problem.js";
-import mongoose from "mongoose";        
 import { sendSuccess,sendError } from "../utils/response.js";
-import { judgeSubmission } from "../services/judegXsubmission.js";
+import { submissionQueue } from "../queues/submission.queue.js";
 
 export const submitCode = async (req, res) => {
     try {
@@ -32,12 +31,20 @@ console.log("PROBLEM FOUND:", exists);
             totalTestCases: 0,
             accepted: false,
         });
-        await judgeSubmission(submission._id);
-        const updatedSubmission =
-            await Submission.findById(
-                submission._id
-            );
-        return sendSuccess(res,201,"Submission created successfully",updatedSubmission);
+        await submissionQueue.add("judge-submission",
+             { 
+                submissionId: submission._id.toString(),
+                userId: userId.toString(),
+                problemId: problemId.toString(),
+             });
+        return sendSuccess(res,
+            201,
+            "Submission created successfully",
+            { 
+                submissionId: submission._id.toString(),
+                status: "pending"
+            }
+        );
     } catch (error) {
         console.error(
             "Error creating submission:",

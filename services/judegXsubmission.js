@@ -7,7 +7,11 @@ import { compareOutputs } from "./outputComprator.js";
 import { getLanguageId } from "./languageMap.js";
 import { buildCode } from "./codeBuilder.js";
 
-export const judgeSubmission = async (submissionId) => {
+import { getIo } from "../socket/socket.js";
+import { updateContestScore } from "../services/contestScore.js";
+import {redis} from "../config/redis.js"
+
+export const judgeSubmission = async (submissionId,contestId) => {
   try {
     const submission = await Submission.findById(submissionId);
 
@@ -32,6 +36,14 @@ export const judgeSubmission = async (submissionId) => {
     const testCases = await TestCase.find({
       problemId: submission.problemId,
     });
+        console.log("Submission Problem ID:", submission.problemId);
+    console.log("Found Test Cases:", testCases.length);
+
+    const allTests = await TestCase.find({});
+    console.log(
+    "All testcase problemIds:",
+    allTests.map(t => t.problemId.toString())
+    );
 
     if (!testCases.length) {
       submission.status = "runtime_error";
@@ -168,7 +180,52 @@ export const judgeSubmission = async (submissionId) => {
         : "wrong_answer";
 
     await submission.save();
+    if(contestId && submission.status==="accepted"){
+      const result = await updateContestScore(
+        contestId,
+         submission.userId, 
+         submission.problemId);
+         console.log("Contest score updated:", result);
+    }
+    if(result){
+      await redis.publish(
+        "contest-score-updated",
+         JSON.stringify(
+          {
+            contestId,
+            userId: submission.userId,
+            problemId: submission.problemId,
+            score: result.score
+          }
+         )
+        );
+    }
 
+      const io=getIo();
+    if (io) {
+      console.log("Sending socket event", {
+        submissionId: submission._id,
+        userId: submission.userId,
+        status: submission.status,
+        passed: submission.passedTestCases,
+        total: submission.totalTestCases
+      });
+      io.to(submission.userId.toString())
+      .emit(
+        "submission-updated",
+        {
+          submissionId: submission._id,
+          status: submission.status,
+          passedTestCases: submission.passedTestCases,
+          totalTestCases:submission.totalTestCases,
+          executionTime:submission.executionTime,
+          memory:submission.memory,
+          accepted:submission.accepted
+        }
+      );
+    } else {
+      console.log("Socket server not initialized (skipping socket emit).");
+    }
     return submission;
   } catch (error) {
     console.error(

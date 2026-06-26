@@ -92,7 +92,7 @@ export const getContestById=async(req,res)=>{
         if(!contests){
             return sendError(res, 404, "Contest not found");
         }
-        sendSuccess(res, 200, "Contest retrieved successfully", contest);
+        sendSuccess(res, 200, "Contest retrieved successfully", contests);
     }catch(error){
         console.error(error);
         return sendError(

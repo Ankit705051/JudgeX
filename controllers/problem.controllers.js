@@ -8,7 +8,7 @@ export const createProblem = async (req, res) => {
             description,
             slug,
             constraints,
-            examples,
+            exmaples,
             codeTemplate,
             solution,
             functionName,
@@ -29,7 +29,7 @@ export const createProblem = async (req, res) => {
             description,
             slug,
             constraints,
-            examples,
+            exmaples,
             codeTemplate,
             solution,
             functionName,
@@ -141,6 +141,11 @@ export const updateProblem = async (req, res) => {
     try {
         const { id } = req.validated.params;
         const updateData = { ...req.validated.body };
+
+        if (updateData.examples) {
+            updateData.exmaples = updateData.examples;
+            delete updateData.examples;
+        }
 
         if (updateData.title) {
             updateData.slug = updateData.title

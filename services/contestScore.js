@@ -50,6 +50,7 @@ export const updateContestScore = async (
         });
 
         await participant.save();
+        
 
         console.log(
             `Contest score updated for user ${userId}`

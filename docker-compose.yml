@@ -12,12 +12,32 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - MONGO_URI=mongodb://mongodb:27017/judgex
+      - REDIS_HOST=redis
       - JUDGE0_API_BASE_URL=https://ce.judge0.com
     depends_on:
       - mongodb
       - judge0
+      - redis
     volumes:
       - ./logs:/app/logs
+    networks:
+      - judgex-network
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: judgex-worker
+    command: ["npm", "run", "worker"]
+    environment:
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://mongodb:27017/judgex
+      - REDIS_HOST=redis
+      - JUDGE0_API_BASE_URL=https://ce.judge0.com
+    depends_on:
+      - mongodb
+      - redis
+      - judge0
     networks:
       - judgex-network
 

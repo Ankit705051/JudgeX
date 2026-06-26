@@ -18,7 +18,7 @@ const buildCpp = (userCode, problem) => {
     let returnType = "int";
     const cppTemplate = problem.codeTemplate?.find(t => t.language === "cpp");
     if (cppTemplate) {
-        const regex = new RegExp(`(\\w+<\\w+>|\\w+)\\s+${problem.functionName}\\s*\\(`);
+        const regex = new RegExp(`(\\w+<[\\w\\s,<>*&]+>|\\w+[*&]?)\\s+${problem.functionName}\\s*\\(`);
         const match = cppTemplate.starterCode.match(regex);
         if (match) {
             returnType = match[1];
@@ -203,7 +203,7 @@ const buildJava = (userCode, problem) => {
     let returnType = "int";
     const javaTemplate = problem.codeTemplate?.find(t => t.language === "java");
     if (javaTemplate) {
-        const regex = new RegExp(`(\\w+<\\w+>|\\w+|\\[\\])\\s+${problem.functionName}\\s*\\(`);
+        const regex = new RegExp(`(\\w+<[\\w\\s,<>]+>|\\w+(?:\\[\\])*)\\s+${problem.functionName}\\s*\\(`);
         const match = javaTemplate.starterCode.match(regex);
         if (match) {
             returnType = match[1];

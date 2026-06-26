@@ -17,7 +17,10 @@ const startWorker = async () => {
 
             console.log("Processing:", submissionId);
 
-            await judgeSubmission(submissionId);
+            await judgeSubmission(
+                submissionId,
+                job.data.contestId,
+            );
 
             console.log("Done:", submissionId);
         },
