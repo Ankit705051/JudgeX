@@ -8,7 +8,7 @@ import { validate } from "../middleware/validate.middleware.js";
 const router = express.Router();
 
 router.post("/create", authenticate, authorize("admin"), validate(createProblemSchema), createProblem);
-router.get("/all", authenticate, authorize("admin"), validate(getAllProblemQuerySchema,"query"), getAllProblem);
+router.get("/all", validate(getAllProblemQuerySchema,"query"), getAllProblem);
 router.get("/:slug", validate(slugSchema,"params"), getProblemBySlug);
 router.patch(
     "/:id",

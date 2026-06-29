@@ -81,7 +81,10 @@ export const getAllProblem = async (req, res) => {
         }
 
         if (tags) {
-            query.tags = { $in: tags };
+            const tagList = Array.isArray(tags)
+                ? tags
+                : tags.split(",").map((tag) => tag.trim()).filter(Boolean);
+            query.tags = { $in: tagList };
         }
 
         const problems = await Problem.find(query)

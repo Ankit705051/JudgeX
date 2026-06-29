@@ -115,15 +115,25 @@ export const getAllProblemQuerySchema = z.object({
         .optional()
         .transform(val => Math.min(Number(val) || 10, 100)),
 
-    title: z.string().optional(),
+    title: z
+        .string()
+        .trim()
+        .optional()
+        .transform(val => val || undefined),
 
-    slug: z.string().optional(),
+    slug: z
+        .string()
+        .trim()
+        .optional()
+        .transform(val => val || undefined),
 
-    difficulty: z
-        .enum(["easy", "medium", "hard"])
-        .optional(),
+    difficulty: z.preprocess(
+        val => val === "" ? undefined : val,
+        z.enum(["easy", "medium", "hard"]).optional()
+    ),
 
     tags: z
         .string()
         .optional()
+        .transform(val => val?.trim() || undefined)
 });
