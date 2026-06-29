@@ -289,6 +289,29 @@ mongod
 | `GET` | `/:contestId/Mysubmissions` | View own contest submissions | Authenticated |
 | `GET` | `/:submissionId/submissionDetails`| Get details of a specific contest submission | Authenticated |
 
+### Discussions (`/api/v1/discussion`)
+| Method | Endpoint | Description | Access |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/` | Get all discussions (paginated, search, filter by tag) | Authenticated |
+| `GET` | `/my` | Get current user's discussions | Authenticated |
+| `GET` | `/single/:discussionId` | Get single discussion details | Authenticated |
+| `GET` | `/problem/:problemId` | Get discussions for a specific problem | Authenticated |
+| `POST` | `/problem/:problemId` | Create a new discussion for a problem | Authenticated |
+| `PUT` | `/:discussionId` | Update discussion (title, content, tags, code) | Authenticated (Owner Only) |
+| `DELETE` | `/:discussionId` | Delete a discussion | Authenticated (Owner Only) |
+| `PATCH` | `/:discussionId/pin` | Pin/unpin a discussion | Authenticated |
+| `PATCH` | `/:discussionId/vote` | Vote on a discussion (upvote/downvote/remove) | Authenticated |
+
+### Replies (`/api/v1/discussion/:discussionId/replies`)
+| Method | Endpoint | Description | Access |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/:discussionId/replies` | Create a reply to a discussion | Authenticated |
+| `GET` | `/:discussionId/replies` | Get all replies for a discussion | Authenticated |
+| `PUT` | `/:discussionId/replies/:replyId` | Update a reply | Authenticated (Owner Only) |
+| `DELETE` | `/:discussionId/replies/:replyId` | Delete a reply | Authenticated (Owner Only) |
+| `PATCH` | `/:discussionId/replies/:replyId/accept` | Accept a reply as solution | Authenticated (Discussion Owner Only) |
+| `PATCH` | `/:discussionId/replies/:replyId/vote` | Vote on a reply (upvote/downvote/remove) | Authenticated |
+
 ---
 
 ## 🔒 Security Practices
