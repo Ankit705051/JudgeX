@@ -9,6 +9,7 @@ import contestRouter from "./routes/contest.routes.js";
 import  contestProblemRouter from "./routes/problemContest.routes.js";
 import contestParticipantRouter from "./routes/contestParticipant.routes.js";
 import contestSubmissionRouter from "./routes/contestSubmission.routes.js";
+import discussionRouter from "./routes/discussion.routes.js";
 const app=express();
 
 
@@ -31,6 +32,7 @@ app.use("/api/v1/contest",contestRouter);
 app.use("/api/v1/contestProblem",contestProblemRouter);
 app.use("/api/v1/contestRegister",contestParticipantRouter);
 app.use("/api/v1/contestSubmission",contestSubmissionRouter);
+app.use("/api/v1/discussion",discussionRouter);
 
 app.get("/",(req,res)=>{
     res.send("Hello World");
