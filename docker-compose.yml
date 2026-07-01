@@ -1,4 +1,3 @@
-version: "3.9"
 
 services:
   backend:
@@ -11,15 +10,14 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - MONGO_URI=mongodb://mongodb:27017/judgex
+      - MONGO_URI=mongodb+srv://ankit_pandey:705089ap@cluster0.y4z2hbo.mongodb.net/JudgeX
       - REDIS_HOST=redis
-      - JUDGE0_API_BASE_URL=https://ce.judge0.com
+      - JUDGE0_API_BASE_URL=http://judge0:2358
     depends_on:
       - mongodb
       - judge0
       - redis
-    volumes:
-      - ./logs:/app/logs
+      - postgres
     networks:
       - judgex-network
 
@@ -31,13 +29,14 @@ services:
     command: ["npm", "run", "worker"]
     environment:
       - NODE_ENV=production
-      - MONGO_URI=mongodb://mongodb:27017/judgex
+      - MONGO_URI=mongodb+srv://ankit_pandey:705089ap@cluster0.y4z2hbo.mongodb.net/JudgeX
       - REDIS_HOST=redis
-      - JUDGE0_API_BASE_URL=https://ce.judge0.com
+      - JUDGE0_API_BASE_URL=http://judge0:2358
     depends_on:
       - mongodb
       - redis
       - judge0
+      - postgres
     networks:
       - judgex-network
 
@@ -46,16 +45,14 @@ services:
     container_name: judgex-mongodb
     ports:
       - "27017:27017"
-    volumes:
-      - mongodb_data:/data/db
     networks:
       - judgex-network
 
   judge0:
-    image: judge0/judge0:1.13.1
+    image: judge0/judge0:latest
     container_name: judge0-api
     ports:
-      - "2358:2358"
+      - "18080:2358"
     environment:
       - REDIS_HOST=redis
       - POSTGRES_HOST=postgres
