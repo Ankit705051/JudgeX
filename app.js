@@ -14,7 +14,7 @@ const app=express();
 
 
 app.use(cors({
-    origin:["http://localhost:5173"],
+    origin:["http://localhost:5173", "https://sprightly-kataifi-1a0126.netlify.app"],
     credentials:true,
 }));
 
