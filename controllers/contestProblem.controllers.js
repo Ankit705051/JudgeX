@@ -19,17 +19,26 @@ export const contestProblems=async(req,res)=>{
         if(contestProblemData){
             return sendError(res,400,"Problem already added to contest");
         }
-        const existingOrder=await contestProblem.findOne({contestId,order});
-        if(existingOrder){
-            return sendError(res,400,"Order already exists");
+        
+        // Auto-generate order if not provided
+        let finalOrder = order;
+        if (!finalOrder) {
+            const maxOrder = await contestProblem.findOne({contestId}).sort({order: -1});
+            finalOrder = maxOrder ? maxOrder.order + 1 : 1;
+        } else {
+            const existingOrder=await contestProblem.findOne({contestId,order});
+            if(existingOrder){
+                return sendError(res,400,"Order already exists");
+            }
         }
-        const problemCode=String.fromCharCode(65 + order - 1);
+        
+        const problemCode=String.fromCharCode(65 + finalOrder - 1);
         const contestProblems=new contestProblem({
             contestId,
             problemId,
             problemCode,
-            order,
-            points
+            order: finalOrder,
+            points: points || 10
         })
         await contestProblems.save();
         sendSuccess(res,200,"Contest problems retrieved successfully",contestProblems);
@@ -37,6 +46,21 @@ export const contestProblems=async(req,res)=>{
         console.error(error);
         sendError(res,500,"Internal server error");
     }
+}
+
+export const getContestProblemList=async(req,res)=>{
+   try{
+      const problems=await Problem.find(
+        {visibility:"contest"}
+      )
+      .select("title difficulty slug")
+      .sort({title:1});
+
+      return sendSuccess(res,200,"Contest problems fetched successfully",problems);
+   }catch(error){
+    console.error(error)
+        return sendError(res,500,"internal server error");
+   }
 }
 
 export const getContestProblems=async(req,res)=>{

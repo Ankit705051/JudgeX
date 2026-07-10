@@ -11,7 +11,6 @@ const testCaseSchema=new mongoose.Schema({
         type: String,
         required: true,
         minlength: 1,
-        trim: true,
     },
     output:{
         type: String,

@@ -5,7 +5,7 @@ const subscriber = new Redis();
 const redis = new Redis();
 
 async function startLeaderboardConsumer() {
-    await subscriber.subscribe("leaderboard-updates");
+    await subscriber.subscribe("contest-score-updated");
       
     console.log("leaderborad consumer started ...");
 

@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "worker": "node worker/submission.worker.js",
+    "worker": "nodemon worker/submission.worker.js",
     "consumer":"node consumers/leaderboard.consumer.js"
   },
   "author": "ankit",

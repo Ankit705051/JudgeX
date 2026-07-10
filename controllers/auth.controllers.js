@@ -333,6 +333,7 @@ export const registerController=async(req,res)=>{
             id:newUser._id,
             userName:newUser.userName,
             name:newUser.name,
+            email:newUser.email,
             role:newUser.role,
             avatar:newUser.avatar,
             verified:newUser.verified,

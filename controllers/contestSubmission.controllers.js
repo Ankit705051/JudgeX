@@ -64,6 +64,7 @@ export const submitContestProblem=async(req,res)=>{
         const submission = await Submission.create({
             userId,
             problemId,
+            contestId,
             code: code.trim(),
             language,
             status: "pending",

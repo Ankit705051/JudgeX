@@ -13,7 +13,6 @@ const exmapleSchema=new mongoose.Schema({
     },
     explanation:{
         type: String,
-        required: true,
         trim: true,
     }
 })
@@ -93,15 +92,35 @@ const problemSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
-  parameterTypes:{
-      type: [String],
+  returnType: {
+      type: String,
       required: true,
       trim: true,
   },
+parameters: [
+    {
+        name: {
+            type: String,
+            required: true,
+            trim: true,
+        },
+        type: {
+            type: String,
+            required: true,
+            trim: true,
+        }
+    }
+],
   hints:{
     type:String,
     trim: true,
   },
+visibility: {
+    type: String,
+    enum: ["public", "contest"],
+    default: "public",
+    required: true,
+},
   createBy:{
     type: mongoose.Schema.Types.ObjectId,
     trim: true,

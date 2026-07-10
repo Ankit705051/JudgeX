@@ -4,7 +4,7 @@ import { z } from "zod";
 export const exampleSchema = z.object({
     input: z.string().trim().min(1),
     output: z.string().trim().min(1),
-    explanation: z.string().trim().min(1)
+    explanation: z.string().trim().optional()
 });
 
 export const codeTemplateSchema = z.object({

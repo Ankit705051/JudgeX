@@ -2,6 +2,10 @@ import { z } from "zod";
 import { ObjectIdSchema } from "./objectId.js";
 import { exampleSchema, codeTemplateSchema, solutionSchema } from "./subSchema.js";
 
+const parameterSchema = z.object({
+    name: z.string().trim().min(1),
+    type: z.string().trim().min(1),
+});
 export const createProblemSchema = z.object({
     title: z.string().trim().min(3),
 
@@ -17,11 +21,13 @@ export const createProblemSchema = z.object({
     constraints: z.string().trim().min(1),
     timeLimit: z.number().positive(),
     memoryLimit: z.number().positive(),
-    exmaples: z.array(exampleSchema).optional(),
+    examples: z.array(exampleSchema).optional(),
     codeTemplate: z.array(codeTemplateSchema).optional(),
     solution: z.array(solutionSchema).optional(),
     functionName: z.string().trim().min(1),
-    parameterTypes: z.array(z.string().trim()),
+    parameters: z.array(parameterSchema).min(1),
+    returnType: z.string().trim().min(1).optional(),
+    visibility: z.enum(["public", "contest"]),
     hints: z.string().trim().optional(),
     createBy: ObjectIdSchema.optional(),
     updateBy: ObjectIdSchema.optional()
@@ -78,10 +84,18 @@ export const updateProblemSchema = z
             .trim()
             .optional(),
 
-        parameterTypes: z
-            .array(z.string().trim())
+        parameters: z
+            .array(parameterSchema)
             .optional(),
 
+        returnType: z
+            .string()
+            .trim()
+            .optional(),
+
+        visibility: z
+            .enum(["public", "contest"])
+            .optional(),
         hints: z
             .string()
             .trim()

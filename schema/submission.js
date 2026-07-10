@@ -16,6 +16,14 @@ const submissionSchema = new mongoose.Schema(
         index:true,
     },
 
+    // Present only for contest submissions.  Keeping it on the submission makes
+    // contest history queries and score processing refer to the same record.
+    contestId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "contest",
+        index: true,
+    },
+
     code:{
         type:String,
         required:true,

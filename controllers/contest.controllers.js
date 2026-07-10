@@ -1,6 +1,21 @@
 import {contest} from "../schema/contest.js";
 import {sendError,sendSuccess} from "../utils/response.js";
 import {contestProblem} from "../schema/contestProblem.js";
+import { getContestLeaderboard as calculateLeaderboard } from "../services/contestLeaderboard.js";
+
+const updateContestStatus = (contestData) => {
+    const now = new Date();
+    const start = new Date(contestData.startTime);
+    const end = new Date(contestData.endTime);
+    
+    if (now < start) {
+        return "upcoming";
+    } else if (now >= start && now < end) {
+        return "running";
+    } else {
+        return "ended";
+    }
+};
 
 export const createContest = async (req, res) => {
     try {
@@ -17,13 +32,9 @@ export const createContest = async (req, res) => {
                 return sendError(res, 400, "Start time must be before end time");
             }
             const duration=Math.floor((end.getTime() - start.getTime()) /(1000*60*60));
-            const now=new Date();
-            let status="upcoming";
-            if(now>=start && now<end){
-                status="running"
-            }else if(now>end){
-                status="ended";
-            }
+            
+            const tempContest = { startTime, endTime };
+            const status = updateContestStatus(tempContest);
 
         const contests = await contest.create({ 
             title,
@@ -62,6 +73,16 @@ export const getAllContest=async(req,res)=>{
             .limit(limit)
             .sort({ createdAt: -1 })
             .select("-__v");
+        
+        // Update status for each contest based on current time
+        for (const contestData of contests) {
+            const currentStatus = updateContestStatus(contestData);
+            if (contestData.status !== currentStatus) {
+                contestData.status = currentStatus;
+                await contestData.save();
+            }
+        }
+        
          const totalContest=await contest.countDocuments(query);
         sendSuccess(res, 200,
             "contest retrieved successfully",
@@ -92,6 +113,14 @@ export const getContestById=async(req,res)=>{
         if(!contests){
             return sendError(res, 404, "Contest not found");
         }
+        
+        // Update status based on current time
+        const currentStatus = updateContestStatus(contests);
+        if (contests.status !== currentStatus) {
+            contests.status = currentStatus;
+            await contests.save();
+        }
+        
         sendSuccess(res, 200, "Contest retrieved successfully", contests);
     }catch(error){
         console.error(error);
@@ -195,3 +224,13 @@ export const deleteContest = async (req, res) => {
     }
 };
 
+export const getContestLeaderboard = async (req, res) => {
+    try {
+        const { id } = req.validated.params;
+        const leaderboard = await calculateLeaderboard(id);
+        return sendSuccess(res, 200, "Leaderboard retrieved successfully", leaderboard);
+    } catch (error) {
+        console.error(error);
+        return sendError(res, 500, error.message || "Internal server error");
+    }
+};

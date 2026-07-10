@@ -1,5 +1,6 @@
 import { Submission } from "../schema/submission.js";
 import { Problem } from "../schema/problem.js";
+import mongoose from "mongoose";        
 import { sendSuccess,sendError } from "../utils/response.js";
 import { submissionQueue } from "../queues/submission.queue.js";
 
@@ -26,25 +27,31 @@ console.log("PROBLEM FOUND:", exists);
             problemId,
             code: code.trim(),
             language,
-            status: "pending",
-            passedTestCases: 0,
-            totalTestCases: 0,
-            accepted: false,
+            status: "pending"
         });
-        await submissionQueue.add("judge-submission",
-             { 
-                submissionId: submission._id.toString(),
-                userId: userId.toString(),
-                problemId: problemId.toString(),
-             });
-        return sendSuccess(res,
-            201,
-            "Submission created successfully",
-            { 
-                submissionId: submission._id.toString(),
-                status: "pending"
+        // Never execute user code in the API process.  The worker owns judging,
+        // which keeps this endpoint responsive and gives pending submissions the
+        // same lifecycle as contest submissions.
+        await submissionQueue.add(
+            "judge-submission",
+            { submissionId: submission._id.toString() },
+            {
+                attempts: 3,
+                backoff: { type: "exponential", delay: 2000 },
+                removeOnComplete: 1000,
+                removeOnFail: 1000
             }
         );
+
+        // Match the contest-submission response and the frontend polling
+        // contract. Mongoose documents expose `_id`, but clients must not need
+        // to know that persistence detail.
+        return sendSuccess(res, 201, "Submission queued for judging", {
+            submissionId: submission._id.toString(),
+            status: submission.status,
+            passedTestCases: 0,
+            totalTestCases: 0
+        });
     } catch (error) {
         console.error(
             "Error creating submission:",

@@ -1,19 +1,22 @@
 import {z} from "zod";
 import { ObjectIdSchema } from "./objectId.js";
-
 export const contestProblemSchema = z.object({
     problemId: ObjectIdSchema,
     points: z
     .number()
     .int()
-    .positive(),
+    .positive()
+    .optional(),
     order: z
     .coerce
     .number()
     .int()
-    .positive(),
-    problemCode: z.string().min(1)
-});
+    .positive()
+    .optional(),
+    problemCode: z
+    .string()
+    .trim()
+    .optional()});
 
 export const contestProblemParamsSchema = z.object({
     contestId: ObjectIdSchema
@@ -38,6 +41,10 @@ export const contestProblemUpdateSchema = z.object({
         .int()
         .positive()
         .optional(),
+    problemCode: z
+    .string()
+    .trim()
+    .optional()
 }).refine(
     (data) => Object.keys(data).length > 0,
     {

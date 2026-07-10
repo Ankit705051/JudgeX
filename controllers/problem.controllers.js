@@ -8,11 +8,13 @@ export const createProblem = async (req, res) => {
             description,
             slug,
             constraints,
-            exmaples,
+            examples,
             codeTemplate,
             solution,
             functionName,
-            parameterTypes,
+            returnType,
+            parameters,
+            visibility,
             timeLimit,
             memoryLimit,
             difficulty,
@@ -24,17 +26,25 @@ export const createProblem = async (req, res) => {
             return sendError(res, 400, "Problem with this slug or title already exists");
         }
         
+        const normalizedExamples = examples?.map(({ explanation, ...example }) => (
+            explanation?.trim()
+                ? { ...example, explanation: explanation.trim() }
+                : example
+        ));
+
         const problem = new Problem({
             title,
             description,
             slug,
             constraints,
-            exmaples,
+            exmaples: normalizedExamples,
             codeTemplate,
             solution,
             functionName,
-            parameterTypes,
+            returnType,
+            parameters,
             timeLimit,
+            visibility,
             memoryLimit,
             difficulty,
             tags,
@@ -44,6 +54,9 @@ export const createProblem = async (req, res) => {
         
     } catch (error) {
         console.error(error);
+        if (error.name === "ValidationError") {
+            return sendError(res, 400, error.message);
+        }
         return sendError(res, 500, "Internal server error");
     }
 }
@@ -133,6 +146,10 @@ export const getProblemBySlug=async(req,res)=>{
         if(!problem){
             return sendError(res,404,"Problem not found");
         }
+        // Older documents use the original schema typo (`exmaples`). Expose a
+        // stable API field so the problem page can always render examples.
+        problem.examples = problem.examples || problem.exmaples || [];
+        delete problem.exmaples;
         return sendSuccess(res,200,"Problem retrieved successfully",problem);
     }catch(error){
         console.error("error in fetching problem by slug",error);
@@ -146,7 +163,11 @@ export const updateProblem = async (req, res) => {
         const updateData = { ...req.validated.body };
 
         if (updateData.examples) {
-            updateData.exmaples = updateData.examples;
+            updateData.exmaples = updateData.examples.map(({ explanation, ...example }) => (
+                explanation?.trim()
+                    ? { ...example, explanation: explanation.trim() }
+                    : example
+            ));
             delete updateData.examples;
         }
 
