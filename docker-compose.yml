@@ -11,7 +11,7 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - MONGO_URI=mongodb+srv://ankit_pandey:705089ap@cluster0.y4z2hbo.mongodb.net/JudgeX
-      - REDIS_HOST=redis
+      - REDIS_URL=redis://default:mBXRUZnrZfmsdx26V84pnoa4Xy2uNB2b@grassy-day-apt-94249.db.redis.io:15841
     depends_on:
       - mongodb
       - redis
@@ -27,7 +27,7 @@ services:
     environment:
       - NODE_ENV=production
       - MONGO_URI=mongodb+srv://ankit_pandey:705089ap@cluster0.y4z2hbo.mongodb.net/JudgeX
-      - REDIS_HOST=redis
+      - REDIS_URL=redis://default:mBXRUZnrZfmsdx26V84pnoa4Xy2uNB2b@grassy-day-apt-94249.db.redis.io:15841
     depends_on:
       - mongodb
       - redis
