@@ -13,7 +13,7 @@ const RUNNERS = {
     62: { name: 'java', image: 'eclipse-temurin:17-jdk-jammy', extension: 'java' }
 };
 
-const SANDBOX_DIR = '/sandbox';
+const SANDBOX_DIR = path.join(os.tmpdir(), "judgex");
 const VOLUME_NAME = 'backend_code_sandbox_vol';
 
 export const executeCode = async (code, languageId, stdin) => {
