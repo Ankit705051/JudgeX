@@ -2,6 +2,7 @@ import { contest } from "../schema/contest.js";
 import { sendSuccess,sendError } from "../utils/response.js";  
 import { contestParticipant } from "../schema/contestParticipant.js";
 import { getUserRank, getLeaderboard } from "../services/leaderboard.service.js";
+import { User } from "../schema/auth.js";
 import { truncates } from "bcryptjs";
 
 export const contestRegister=async(req,res)=>{
@@ -18,7 +19,7 @@ export const contestRegister=async(req,res)=>{
         const existingParticipant=await contestParticipant.findOne({userId,contestId});
         if(existingParticipant){
             return sendError(res,400,"user already registered for this contest");
-        } 
+        }
         const register=new contestParticipant({
           contestId,
           userId,
@@ -27,6 +28,11 @@ export const contestRegister=async(req,res)=>{
           solvedProblem:[]
         })
         await register.save();
+
+        // Initialize user in Redis leaderboard with score 0
+        const { redis } = await import("../config/redis.js");
+        await redis.zadd(`leaderboard:${contestId}`, 0, userId.toString());
+
         const updatedContest=await contest.findByIdAndUpdate(
             contestId,
             {
@@ -41,7 +47,7 @@ export const contestRegister=async(req,res)=>{
             res,
             201,
             "contest participant registered successfully",
-            { 
+            {
                 register,
                 totalParticipants:updatedContest.totalParticipants,
             }
@@ -83,9 +89,9 @@ export const getContestParticipants=async(req,res)=>{
         return sendSuccess(
             res,200,
             "patricipants retrive successfully",
-            participant,
             {
-               pagination:{
+                participants: participant,
+                pagination:{
                 totalParticipants,
                 currentPage:page,
                 totalPages:Math.ceil(totalParticipants/limit),
@@ -140,16 +146,52 @@ export const contestLeaderboard=async(req,res)=>{
         const leaderboard=await getLeaderboard(
             contestId,
             Number(page),
-            Number(limit)   
+            Number(limit)
         );
+
+        console.log("Raw leaderboard from Redis:", leaderboard);
+
+        const totalParticipants = await contestParticipant.countDocuments({contestId});
+        const populatedLeaderboard = await Promise.all(
+            leaderboard.map(async (entry) => {
+                try {
+                    const userData = await User.findById(entry.userId).select("userName name email").lean();
+                    const participantData = await contestParticipant.findOne({contestId, userId: entry.userId}).lean();
+                    const finalEntry = {
+                        ...entry,
+                        username: userData ? userData.userName || userData.name : `User ${entry.userId}`,
+                        email: userData ? userData.email : "",
+                        solvedProblems: participantData?.solvedProblem?.length || 0
+                    };
+                    if (participantData && participantData.score > 0 && entry.score === 0) {
+                        finalEntry.score = participantData.score;
+                    }
+                    console.log("Final entry:", finalEntry);
+                    return finalEntry;
+                } catch (err) {
+                    return {
+                        ...entry,
+                        username: `User ${entry.userId}`,
+                        solvedProblems: 0
+                    };
+                }
+            })
+        );
+
         return sendSuccess(
             res,
             200,
             "leaderboard retrieved successfully",
             {
-                leaderboard
+                leaderboard: populatedLeaderboard,
+                pagination: {
+                    currentPage: Number(page),
+                    totalPages: Math.ceil(totalParticipants / limit),
+                    totalParticipants,
+                    limit: Number(limit)
+                }
             }
-        );  
+        );
     }catch(error){
         console.error(error);
         return sendError(

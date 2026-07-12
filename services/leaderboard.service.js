@@ -24,8 +24,9 @@ export const getLeaderboard = async (contestId, page = 1, limit = 10) => {
 
     return leaderboard;
     }catch(error){
-        console.error(error);
-        throw error;
+        console.error("Error getting leaderboard from Redis:", error);
+        // Return empty array if Redis fails or leaderboard doesn't exist
+        return [];
     }
 };
 
@@ -46,7 +47,11 @@ export const getUserRank = async (contestId, userId) => {
         score: Number(score || 0)
     };
     }catch(error){
-        console.error(error);
-        throw error;
+        console.error("Error getting user rank from Redis:", error);
+        // Return null values if Redis fails or leaderboard doesn't exist
+        return {
+            rank: null,
+            score: 0
+        };
     }
 };

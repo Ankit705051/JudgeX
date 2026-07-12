@@ -683,36 +683,58 @@ const generatePythonInputParsing = (parameters) => {
 
 // Generate JavaScript input parsing code
 const generateJavascriptInputParsing = (parameters) => {
-    let parsingCode = '';
-    let paramNames = [];
-    
-    // Uses the same parameter-per-line input contract as the other builders.
+    let parsingCode = "";
+    const paramNames = [];
+
     parameters.forEach((param, index) => {
-            const varName = `param${index}`;
-            paramNames.push(varName);
-            const type = normalizeType(param?.type);
-            
-            if (isArrayType(type)) {
-                parsingCode += `    const ${varName} = JSON.parse(inputLines[${index}]);\n`;
-            } else if (type === 'listnode' || type === 'ListNode') {
-                parsingCode += `    const ${varName} = parseList(inputLines[${index}]);\n`;
-            } else if (type === 'treenode' || type === 'TreeNode') {
-                parsingCode += `    const ${varName} = parseTree(inputLines[${index}]);\n`;
-            } else if (type === 'string') {
+
+        const varName = `param${index}`;
+        paramNames.push(varName);
+
+        const type = normalizeType(param.type);
+
+        switch (type) {
+
+            case "int[]":
+            case "string[]":
+            case "int[][]":
+            case "array":
+                parsingCode += `    const ${varName} = JSON.parse(inputLines[${index}].trim());\n`;
+                break;
+
+            case "ListNode":
+            case "listnode":
+                parsingCode += `    const ${varName} = parseList(inputLines[${index}].trim());\n`;
+                break;
+
+            case "TreeNode":
+            case "treenode":
+                parsingCode += `    const ${varName} = parseTree(inputLines[${index}].trim());\n`;
+                break;
+
+            case "string":
                 parsingCode += `    const ${varName} = inputLines[${index}];\n`;
-            } else if (type === 'bool') {
-                parsingCode += `    const ${varName} = inputLines[${index}].trim().toLowerCase() === 'true';\n`;
-            } else {
-                parsingCode += `    const ${varName} = Number(inputLines[${index}]);\n`;
-            }
-        });
-    
-    if (paramNames.length === 0) {
-        paramNames.push("param0");
-        parsingCode += `    const param0 = JSON.parse(inputLines[0]);\n`;
-    }
-    
-    return { parsingCode, paramNames };
+                break;
+
+            case "bool":
+                parsingCode += `    const ${varName} = inputLines[${index}].trim().toLowerCase() === "true";\n`;
+                break;
+
+            case "double":
+            case "float":
+            case "long":
+            case "int":
+            default:
+                parsingCode += `    const ${varName} = Number(inputLines[${index}].trim());\n`;
+                break;
+        }
+
+    });
+
+    return {
+        parsingCode,
+        paramNames,
+    };
 };
 
 export {

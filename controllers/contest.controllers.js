@@ -4,13 +4,21 @@ import {contestProblem} from "../schema/contestProblem.js";
 import { getContestLeaderboard as calculateLeaderboard } from "../services/contestLeaderboard.js";
 
 const updateContestStatus = (contestData) => {
+    // Use IST timezone (UTC+5:30)
     const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000; // 5.5 hours in milliseconds
+    const istNow = new Date(now.getTime() + istOffset);
+
     const start = new Date(contestData.startTime);
     const end = new Date(contestData.endTime);
-    
-    if (now < start) {
+
+    // Also convert start and end times to IST for comparison
+    const istStart = new Date(start.getTime() + istOffset);
+    const istEnd = new Date(end.getTime() + istOffset);
+
+    if (istNow < istStart) {
         return "upcoming";
-    } else if (now >= start && now < end) {
+    } else if (istNow >= istStart && istNow < istEnd) {
         return "running";
     } else {
         return "ended";

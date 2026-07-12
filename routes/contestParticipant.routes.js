@@ -7,10 +7,10 @@ import { contestRegister, getContestParticipants, getMyContestParticipants, dele
 const router = express.Router();
 
 router.post("/:contestId/register", authenticate, validate(contestParamRegisterSchema, "params"), contestRegister);
-router.get("/:contestId/participants", authenticate,authorize("admin"), validate(contestParticipantParamSchema, "params"),validate(contestParticipantQuerySchema, "query"), getContestParticipants);
+router.get("/:contestId/participants", authenticate, validate(contestParticipantParamSchema, "params"),validate(contestParticipantQuerySchema, "query"), getContestParticipants);
 router.get("/:contestId/my-participations", authenticate,validate(contestParticipantParamSchema, "params"), getMyContestParticipants);
 router.get("/:contestId/leaderboard", authenticate,validate(contestParticipantParamSchema, "params"),validate(contestLeaderboardQuerySchema,"query"), contestLeaderboard);
-router.get("/:contestId/getRank",authenticate,getMyRank);
+router.get("/:contestId/getRank", authenticate, validate(contestParticipantParamSchema, "params"), getMyRank);
 router.delete("/:contestId/register", authenticate,validate(contestParticipantParamSchema, "params"), deleteMyContestParticipant);
 
 

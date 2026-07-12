@@ -1,14 +1,21 @@
-import { extractParameters } from "./helpers/functionExtractor.js";
+import {
+    extractReturnType,
+    extractParameters,
+} from "./helpers/functionExtractor.js";
+
 import {
     generateJavascriptInputParsing,
 } from "./helpers/parserGenerator.js";
+
 import {
     generateJavascriptOutputWriting,
     generateFunctionCall,
 } from "./helpers/serializerGenerator.js";
-import { normalizeType } from './typeRegistry.js';
-import * as linkedList from './structures/linkedList.js';
-import * as tree from './structures/tree.js';
+
+import { normalizeType } from "./typeRegistry.js";
+
+import * as linkedList from "./structures/linkedList.js";
+import * as tree from "./structures/tree.js";
 
 const buildJavascript = (userCode, problem) => {
     if (!problem) {
@@ -19,72 +26,93 @@ const buildJavascript = (userCode, problem) => {
         throw new Error("Problem functionName is required.");
     }
 
-    const parameters =
-        problem.parameters?.length
-            ? [...problem.parameters]
-            : extractParameters(
-                  userCode,
-                  problem.functionName,
-                  "javascript"
-              );
+    // Get metadata
+    const returnType = extractReturnType(
+        userCode,
+        problem.functionName,
+        "javascript",
+        problem
+    );
 
-    // Check if custom types are needed
-    const needsListNode = parameters.some(p => {
-        const type = normalizeType(p?.type);
-        return type === 'listnode' || type === 'ListNode';
-    }) || normalizeType(problem.returnType) === 'listnode' || normalizeType(problem.returnType) === 'ListNode';
-    
-    const needsTreeNode = parameters.some(p => {
-        const type = normalizeType(p?.type);
-        return type === 'treenode' || type === 'TreeNode';
-    }) || normalizeType(problem.returnType) === 'treenode' || normalizeType(problem.returnType) === 'TreeNode';
+    const parameters = extractParameters(
+        userCode,
+        problem.functionName,
+        "javascript",
+        problem
+    );
 
+    const normalizedReturnType = normalizeType(returnType);
+
+    // Determine required structures
+    const needsListNode =
+        parameters.some(
+            (p) => normalizeType(p.type) === "ListNode"
+        ) || normalizedReturnType === "ListNode";
+
+    const needsTreeNode =
+        parameters.some(
+            (p) => normalizeType(p.type) === "TreeNode"
+        ) || normalizedReturnType === "TreeNode";
+
+    // Generate input parsing
     const { parsingCode, paramNames } =
         generateJavascriptInputParsing(parameters);
 
+    // Generate function call
     const callCode = generateFunctionCall(
         userCode,
         problem.functionName,
         paramNames,
-        "javascript"
+        "javascript",
+        returnType
     );
 
+    // Generate output serialization
     const outputWriting =
-        generateJavascriptOutputWriting(problem.returnType);
+        generateJavascriptOutputWriting(returnType);
 
-    // Add structure definitions if needed
-    let structureDefs = '';
+    // Structure definitions
+    let structureDefs = "";
+
     if (needsListNode) {
-        structureDefs += linkedList.javascriptListNodeDef;
+        structureDefs += linkedList.javascriptListNodeDef + "\n";
     }
+
     if (needsTreeNode) {
-        structureDefs += tree.javascriptTreeNodeDef;
+        structureDefs += tree.javascriptTreeNodeDef + "\n";
     }
-    
-    // Add parsers if needed
-    let parsers = '';
+
+    // Parsers
+    let parsers = "";
+
     if (needsListNode) {
-        parsers += linkedList.javascriptListParser;
+        parsers += linkedList.javascriptListParser + "\n";
     }
+
     if (needsTreeNode) {
-        parsers += tree.javascriptTreeParser;
+        parsers += tree.javascriptTreeParser + "\n";
     }
-    
-    // Add serializers if needed
-    let serializers = '';
+
+    // Serializers
+    let serializers = "";
+
     if (needsListNode) {
-        serializers += linkedList.javascriptListSerializer;
+        serializers += linkedList.javascriptListSerializer + "\n";
     }
+
     if (needsTreeNode) {
-        serializers += tree.javascriptTreeSerializer;
+        serializers += tree.javascriptTreeSerializer + "\n";
     }
 
     return `
 const fs = require("fs");
 
 ${structureDefs}
+
 ${userCode}
+
 ${parsers}
+
 ${serializers}
 
 function main() {
