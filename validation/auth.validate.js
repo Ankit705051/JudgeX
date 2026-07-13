@@ -1,8 +1,7 @@
 import { z } from "zod";
 
 const passwordRegex =
-  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,20}$/;
 
 // =========================
 // REGISTER
@@ -34,7 +33,7 @@ export const registerSchema = z.object({
   password: z
     .string()
     .min(8, "Password must be at least 8 characters")
-    .max(128, "Password cannot exceed 128 characters")
+    .max(20, "Password cannot exceed 20 characters")
     .regex(
       passwordRegex,
       "Password must contain uppercase, lowercase, number and special character"

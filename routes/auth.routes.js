@@ -10,11 +10,15 @@ import {
     updateUser,
     createAdmin,
     deactivateAdmin,
-    activateAdmin
+    activateAdmin,
+    getAllUsers,
+    deactivateUser,
+    activateUser
 } from "../controllers/auth.controllers.js";
 import { authenticate, authorize } from "../middleware/auth.middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
 import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, updateUserSchema, createAdminSchema, objectIdSchema, userIdParamSchema, verifyTokenSchema, resetTokenParamSchema   } from "../validation/auth.validate.js";
+import upload from "../middleware/upload.middleware.js";
 const router = express.Router();
 
 router.post("/register", validate(registerSchema), registerController);
@@ -96,7 +100,7 @@ router.get("/reset-password/:token", validate(resetTokenParamSchema,"params"), (
 
 
 router.get("/user",authenticate, getUser);
-router.put("/user",authenticate,validate(updateUserSchema), updateUser);
+router.put("/user",authenticate,upload.single("avatar"), updateUser);
 router.post("/admin",authenticate,authorize("admin"), validate(createAdminSchema), createAdmin);
 router.patch(
     "/admin/deactivate/:id",
@@ -112,6 +116,10 @@ router.patch(
     validate(userIdParamSchema, "params"),
     activateAdmin
 );
+
+router.get("/users",authenticate,authorize("admin"), getAllUsers);
+router.patch("/users/deactivate/:id",authenticate,authorize("admin"),validate(userIdParamSchema,"params"), deactivateUser);
+router.patch("/users/activate/:id",authenticate,authorize("admin"),validate(userIdParamSchema,"params"), activateUser);
 
 
 

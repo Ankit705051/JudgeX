@@ -23,11 +23,22 @@ const validateEmail=(email)=>{
 }
 
 const validatePassword=(password)=>{
-     const passwordRegex=/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-     return passwordRegex.test(password) && password.length >= 8;
+     const passwordRegex=/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,20}$/;
+     return passwordRegex.test(password) && password.length >= 8 && password.length <= 20;
 }
 
 const createTransporter=()=>{
+    console.log("Email configuration check:");
+    console.log("MAIL_HOST:", process.env.MAIL_HOST);
+    console.log("MAIL_PORT:", process.env.MAIL_PORT);
+    console.log("MAIL_SECURE:", process.env.MAIL_SECURE);
+    console.log("MAIL_USERNAME:", process.env.MAIL_USERNAME);
+    console.log("MAIL_PASSWORD:", process.env.MAIL_PASSWORD ? "***SET***" : "***NOT SET***");
+    
+    if (!process.env.MAIL_HOST || !process.env.MAIL_USERNAME || !process.env.MAIL_PASSWORD) {
+        console.error("Email credentials are not properly configured in .env file");
+    }
+    
     return nodemailer.createTransport({
         host: process.env.MAIL_HOST,
         port: parseInt(process.env.MAIL_PORT),
@@ -43,8 +54,9 @@ export const sendVerificationEmail=async(user,verificationToken)=>{
     try{
     const transporter=createTransporter();
     const verifyUrl=`${process.env.BASE_URI ||'http://localhost:3000' }/api/v1/auth/verify/${verificationToken}`
-    
-    await transporter.sendMail({
+     console.log("Recipient:", user.email);
+        console.log("Sender:", process.env.MAIL_USERNAME);
+        const info=await transporter.sendMail({
         from: `"${process.env.APP_NAME || 'JudgeX'} Support" <${process.env.MAIL_USERNAME}>`,
         to:user.email,
         subject: "Verify your email",
@@ -133,6 +145,7 @@ export const sendVerificationEmail=async(user,verificationToken)=>{
         </div>
     </div>
     `});
+    console.log('Email info:', info);
     console.log('reset password email sent to:', user.email);
     }catch(error){
         console.error('Error sending reset password :', error);
@@ -559,6 +572,7 @@ export const resetPassword=async(req,res)=>{
         if(!validatePassword(password)){
              return sendError(res, 400, "Password must be at least 8 characters long one digit,one special char,one upercase,one lowercase");
         }
+        const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
         const user = await User.findOne({
             resetPasswordToken: hashedToken,
             resetPasswordExpire: { $gt: Date.now() }
@@ -571,7 +585,7 @@ export const resetPassword=async(req,res)=>{
         user.password =password;
         user.resetPasswordToken = undefined;
         user.resetPasswordExpire = undefined;
-        user.passwordChangeAt = Date.now();
+        user.passwordChangedAt = Date.now();
         user.loginAttempts = 0;
         user.lockUntil = undefined;
         await user.save();
@@ -586,8 +600,11 @@ export const resetPassword=async(req,res)=>{
 
 export const updateUser=async(req,res)=>{
     try{
-        const {name,email,currentPassword,newPassword}=req.validated.body;
-        const user = await User.findById(req.user.id).select('+password');
+        const {name,email,currentPassword,newPassword}=req.body || {};
+        console.log("Update user request body:", req.body);
+        console.log("Update user file:", req.file);
+        
+        const user = await User.findById(req.user._id).select('+password');
             if (!user) {
                 return sendError(res, 404, "User not found");
             }
@@ -621,14 +638,20 @@ export const updateUser=async(req,res)=>{
                 if (isSame) {
                     return sendError(res, 400, "New password cannot be same as old password");
                 }
-                user.password = password; 
-                user.passwordChangeAt=Date.now();
+                user.password = newPassword; 
+                user.passwordChangedAt=Date.now();
+                // Validate before save when password is changed
+                await user.save();
+            } else {
+                // Skip validation when not changing password
+                if (req.file) {
+                    console.log("File uploaded to Cloudinary:", req.file);
+                    user.avatar = req.file.secure_url || req.file.path;
+                    console.log("Avatar URL set to:", user.avatar);
+                }
+                await user.save({ validateBeforeSave: false });
             }
-
-            if (req.file) {
-                user.avatar = `/uploads/avatars/${req.file.filename}`;
-            }
-             await user.save();
+            
             const userResponse = {
             id: user._id,
             userName: user.userName,
@@ -689,6 +712,48 @@ export const activateAdmin=async(req,res)=>{
         
     }catch(error){
          return sendError(res,500,error.message);
+    }
+}
+
+export const getAllUsers=async(req,res)=>{
+    try{
+        const users=await User.find().select('-password').sort({createdAt:-1});
+        return sendSuccess(res,200,"Users fetched successfully",users);
+    }catch(error){
+        return sendError(res,500,"Error fetching users");
+    }
+}
+
+export const deactivateUser=async(req,res)=>{
+    try{
+        const{id}=req.validated.params;
+        const user=await User.findById(id);
+        if(!user){
+            return sendError(res,400,"User not found");
+        }
+        if(req.user._id.toString()===id){
+            return sendError(res,400,"You cannot deactivate yourself");
+        }
+        user.isActive=false;
+        await user.save();
+        return sendSuccess(res,200,"User deactivated successfully");
+    }catch(error){
+        return sendError(res,500,error.message);
+    }
+}
+
+export const activateUser=async(req,res)=>{
+    try{
+        const{id}=req.validated.params;
+        const user=await User.findById(id);
+        if(!user){
+            return sendError(res,400,"User not found");
+        }
+        user.isActive=true;
+        await user.save();
+        return sendSuccess(res,200,"User activated successfully");
+    }catch(error){
+        return sendError(res,500,error.message);
     }
 }
 

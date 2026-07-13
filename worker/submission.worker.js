@@ -7,52 +7,28 @@ import { judgeSubmission } from "../services/judegXsubmission.js";
 
 
 dotenv.config();
-
-
 console.log("=== Submission Worker Starting ===");
-
-
-
 const WORKER_CONCURRENCY =
     Number(process.env.WORKER_CONCURRENCY) || 20;
-
-
-
 const startWorker = async () => {
-
     let submissionWorker;
-
-
     try {
 
-
         console.log("Connecting MongoDB...");
-
         await connectDB();
-
         console.log("✅ MongoDB connected");
 
-
-
         submissionWorker = new Worker(
-
             "submission-queue",
 
-
             async(job)=>{
-
-
                 console.log(
                     `📋 Processing Job ${job.id}`
                 );
-
-
                 const {
                     submissionId,
                     contestId
                 } = job.data;
-
-
 
                 if(!submissionId){
 
@@ -61,8 +37,6 @@ const startWorker = async () => {
                     );
 
                 }
-
-
 
                 await judgeSubmission(
 
@@ -74,10 +48,7 @@ const startWorker = async () => {
 
                 );
 
-
-
                 return {
-
                     submissionId,
 
                     status:"completed"
@@ -85,8 +56,6 @@ const startWorker = async () => {
                 };
 
             },
-
-
             {
                 connection: redis,
                 concurrency:
