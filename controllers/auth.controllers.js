@@ -2,6 +2,8 @@ import {User} from "../schema/auth.js";
 
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import dns from "dns";
+dns.setDefaultResultOrder("ipv4first");
 import nodemailer from "nodemailer";
 import bcrypt from "bcryptjs";
 
@@ -46,14 +48,17 @@ const createTransporter=()=>{
         auth: {
             user: process.env.MAIL_USERNAME,
             pass: process.env.MAIL_PASSWORD,
-        }
+        },
+        connectionTimeout: 30000,
+        greetingTimeout: 30000,
+        socketTimeout: 30000,
+
     });
 };
-
 export const sendVerificationEmail=async(user,verificationToken)=>{
     try{
     const transporter=createTransporter();
-    const verifyUrl=`${process.env.BASE_URI ||'http://localhost:3000' }/api/v1/auth/verify/${verificationToken}`
+    const verifyUrl =`${process.env.FRONTEND_URL}/verify/${verificationToken}`;
      console.log("Recipient:", user.email);
         console.log("Sender:", process.env.MAIL_USERNAME);
         const info=await transporter.sendMail({
@@ -158,7 +163,7 @@ export const sendVerificationEmail=async(user,verificationToken)=>{
 export const sendPasswordResetEmail=async(user,resetToken)=>{
     try{
     const transporter=createTransporter();
-    const resetUrl=`${process.env.BASE_URI ||'http://localhost:3000' }/api/v1/auth/reset-password/${resetToken}`
+    const resetUrl =`${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
     
     await transporter.sendMail({
         from: `"${process.env.APP_NAME || 'JudgeX'} Support" <${process.env.MAIL_USERNAME}>`,
