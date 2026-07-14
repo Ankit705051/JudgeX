@@ -18,6 +18,8 @@ app.use(cors({
     origin: function (origin, callback) {
         if (!origin || whitelist.includes(origin)) {
             callback(null, true);
+        } else if (process.env.NODE_ENV === "production") {
+            callback(null, true);
         } else {
             callback(new Error("Not allowed by CORS"));
         }
