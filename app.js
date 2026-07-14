@@ -14,7 +14,9 @@ const app=express();
 
 
 app.use(cors({
-    origin:["http://localhost:5173", "https://vercel.com/ankit705051s-projects/judgex-project", "https://judge-x-delta.vercel.app"],
+    origin:["http://localhost:5173",
+         process.env.FRONTEND_URL
+    ],
     credentials:true,
 }));
 
