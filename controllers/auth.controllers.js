@@ -1,10 +1,9 @@
 import {User} from "../schema/auth.js";
-
+import {resend} from "../utils/email.js";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import dns from "dns";
 dns.setDefaultResultOrder("ipv4first");
-import nodemailer from "nodemailer";
 import bcrypt from "bcryptjs";
 
 import { sendSuccess, sendError } from "../utils/response.js";
@@ -29,42 +28,15 @@ const validatePassword=(password)=>{
      return passwordRegex.test(password) && password.length >= 8 && password.length <= 20;
 }
 
-const createTransporter=()=>{
-    console.log("Email configuration check:");
-    console.log("MAIL_HOST:", process.env.MAIL_HOST);
-    console.log("MAIL_PORT:", process.env.MAIL_PORT);
-    console.log("MAIL_SECURE:", process.env.MAIL_SECURE);
-    console.log("MAIL_USERNAME:", process.env.MAIL_USERNAME);
-    console.log("MAIL_PASSWORD:", process.env.MAIL_PASSWORD ? "***SET***" : "***NOT SET***");
-    
-    if (!process.env.MAIL_HOST || !process.env.MAIL_USERNAME || !process.env.MAIL_PASSWORD) {
-        console.error("Email credentials are not properly configured in .env file");
-    }
-    
-    return nodemailer.createTransport({
-        host: process.env.MAIL_HOST,
-        port: parseInt(process.env.MAIL_PORT),
-        secure: process.env.MAIL_SECURE === 'true',
-        auth: {
-            user: process.env.MAIL_USERNAME,
-            pass: process.env.MAIL_PASSWORD,
-        },
-        connectionTimeout: 30000,
-        greetingTimeout: 30000,
-        socketTimeout: 30000,
 
-    });
-};
 export const sendVerificationEmail=async(user,verificationToken)=>{
     try{
-    const transporter=createTransporter();
     const verifyUrl =`${process.env.FRONTEND_URL}/verify/${verificationToken}`;
      console.log("Recipient:", user.email);
-        console.log("Sender:", process.env.MAIL_USERNAME);
-        const info=await transporter.sendMail({
-        from: `"${process.env.APP_NAME || 'JudgeX'} Support" <${process.env.MAIL_USERNAME}>`,
-        to:user.email,
-        subject: "Verify your email",
+       const { data, error } = await resend.emails.send({
+      from: `${process.env.APP_NAME || "JudgeX"} <onboarding@resend.dev>`,
+      to: user.email,
+      subject: "Verify your email",
         html: `
         <div style="background:#f4f7fb;padding:40px 20px;font-family:'Segoe UI',Arial,sans-serif;">
             <div style="max-width:600px;margin:auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.08);">
@@ -162,13 +134,12 @@ export const sendVerificationEmail=async(user,verificationToken)=>{
 
 export const sendPasswordResetEmail=async(user,resetToken)=>{
     try{
-    const transporter=createTransporter();
     const resetUrl =`${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
     
-    await transporter.sendMail({
-        from: `"${process.env.APP_NAME || 'JudgeX'} Support" <${process.env.MAIL_USERNAME}>`,
-        to:user.email,
-        subject: "Reset your password",
+    const { data, error } = await resend.emails.send({
+      from: `${process.env.APP_NAME || "JudgeX"} <onboarding@resend.dev>`,
+      to: user.email,
+      subject: "Reset your password",
         html: `
         <div style="background:#f4f7fb;padding:40px 20px;font-family:'Segoe UI',Arial,sans-serif;">
             <div style="max-width:600px;margin:auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.08);">
