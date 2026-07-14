@@ -122,8 +122,7 @@ export const sendVerificationEmail=async(user,verificationToken)=>{
         </div>
     </div>
     `});
-    console.log('Email info:', info);
-    console.log('reset password email sent to:', user.email);
+      console.log("Verification email sent successfully.");
     }catch(error){
         console.error('Error sending reset password :', error);
         throw error;
@@ -225,9 +224,9 @@ export const sendPasswordResetEmail=async(user,resetToken)=>{
         </div>
     </div>
     `});
-    console.log('Verification email sent to:', user.email);
+    console.log('reset password email sent successfully');
     }catch(error){
-        console.error('Error sending verification email:', error);
+        console.error('Error in reset password:', error);
         throw error;
     }
 };
