@@ -13,8 +13,15 @@ import discussionRouter from "./routes/discussion.routes.js";
 const app=express();
 
 
+const whitelist = ["http://localhost:5173", "https://judgex-project.vercel.app"];
 app.use(cors({
-    origin: "*",
+    origin: function (origin, callback) {
+        if (!origin || whitelist.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error("Not allowed by CORS"));
+        }
+    },
     credentials: true,
 }));
 
