@@ -13,16 +13,26 @@ import discussionRouter from "./routes/discussion.routes.js";
 const app=express();
 
 
-const whitelist = ["http://localhost:5173", "https://judgex-project.vercel.app"];
+const whitelist = [
+  "http://localhost:5173",
+  "https://judgex-project.vercel.app",
+  "https://judgex-project.netlify.app",
+];
+
 app.use(cors({
-    origin: function (origin, callback) {
-        if (!origin || whitelist.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error("Not allowed by CORS"));
-        }
-    },
-    credentials: true,
+  origin(origin, callback) {
+    if (
+      !origin ||
+      whitelist.includes(origin) ||
+      origin.endsWith(".vercel.app") ||
+      origin.endsWith(".netlify.app")
+    ) {
+      return callback(null, true);
+    }
+
+    return callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
 }));
 
 app.use(express.json());
