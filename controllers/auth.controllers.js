@@ -31,7 +31,7 @@ const validatePassword=(password)=>{
 
 export const sendVerificationEmail=async(user,verificationToken)=>{
     try{
-    const verifyUrl =`${process.env.FRONTEND_URL}/verify/${verificationToken}`;
+    const verifyUrl =`${process.env.BASE_URI}api/v1/auth/verify/${verificationToken}`;
      console.log("Recipient:", user.email);
        const { data, error } = await resend.emails.send({
       from: `${process.env.APP_NAME || "JudgeX"} <onboarding@resend.dev>`,
@@ -134,7 +134,7 @@ export const sendVerificationEmail=async(user,verificationToken)=>{
 
 export const sendPasswordResetEmail=async(user,resetToken)=>{
     try{
-    const resetUrl =`${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    const resetUrl =`${process.env.BASE_URI}/api/v1/auth/reset-password/${resetToken}`;
     
     const { data, error } = await resend.emails.send({
       from: `${process.env.APP_NAME || "JudgeX"} <onboarding@resend.dev>`,
