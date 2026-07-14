@@ -68,7 +68,7 @@ router.get("/reset-password/:token", validate(resetTokenParamSchema,"params"), (
 
             <h2>Reset Password</h2>
 
-            <form action="/api/v1/auth/reset-password/${token}" method="POST">
+            <form action="${process.env.BASE_URI}/api/v1/auth/reset-password/${token}" method="POST">
 
                 <div class="form-group">
 

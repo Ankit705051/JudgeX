@@ -31,7 +31,7 @@ const validatePassword=(password)=>{
 
 export const sendVerificationEmail=async(user,verificationToken)=>{
     try{
-    const verifyUrl =`${process.env.BASE_URI}api/v1/auth/verify/${verificationToken}`;
+    const verifyUrl =`${process.env.BASE_URI}/api/v1/auth/verify/${verificationToken}`;
      console.log("Recipient:", user.email);
        const { data, error } = await resend.emails.send({
       from: `${process.env.APP_NAME || "JudgeX"} <onboarding@resend.dev>`,
