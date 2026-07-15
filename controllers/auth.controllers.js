@@ -34,7 +34,7 @@ export const sendVerificationEmail=async(user,verificationToken)=>{
     const verifyUrl =`${process.env.BASE_URI}/api/v1/auth/verify/${verificationToken}`;
      console.log("Recipient:", user.email);
        const { data, error } = await resend.emails.send({
-      from: `${process.env.APP_NAME || "JudgeX"} <onboarding@resend.dev>`,
+      from: `${process.env.APP_NAME || "JudgeX"} <noreply@judgex.publicvm.com>`,
       to: user.email,
       subject: "Verify your email",
         html: `
@@ -136,7 +136,7 @@ export const sendPasswordResetEmail=async(user,resetToken)=>{
     const resetUrl =`${process.env.BASE_URI}/api/v1/auth/reset-password/${resetToken}`;
     
     const { data, error } = await resend.emails.send({
-      from: `${process.env.APP_NAME || "JudgeX"} <onboarding@resend.dev>`,
+      from: `${process.env.APP_NAME || "JudgeX"} <noreply@judgex.publicvm.com>`,
       to: user.email,
       subject: "Reset your password",
         html: `
@@ -224,7 +224,11 @@ export const sendPasswordResetEmail=async(user,resetToken)=>{
         </div>
     </div>
     `});
-    console.log('reset password email sent successfully');
+      if (error) {
+        console.error("Resend Error:", error);
+        throw new Error(error.message);
+        }
+    cconsole.log("Email sent:", data);
     }catch(error){
         console.error('Error in reset password:', error);
         throw error;
