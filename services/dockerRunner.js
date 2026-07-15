@@ -7,14 +7,12 @@ import os from "os";
 const execAsync = util.promisify(exec);
 
 const RUNNERS = {
-    54: { name: 'cpp', image: 'gcc:latest', extension: 'cpp' },
+    54: { name: 'cpp', image: 'gcc:13', extension: 'cpp' },
     71: { name: 'python', image: 'python:3.9-slim', extension: 'py' },
     63: { name: 'javascript', image: 'node:18-slim', extension: 'js' },
     62: { name: 'java', image: 'eclipse-temurin:17-jdk-jammy', extension: 'java' }
 };
-
 const SANDBOX_DIR = path.join(os.tmpdir(), "judgex");
-const VOLUME_NAME = 'backend_code_sandbox_vol';
 
 export const executeCode = async (code, languageId, stdin) => {
     const runner = RUNNERS[languageId];
@@ -40,10 +38,10 @@ export const executeCode = async (code, languageId, stdin) => {
         let executeInnerCmd = '';
 
         if (runner.name === 'cpp') {
-            compileInnerCmd = `g++ ${filename} -o main`;
+            compileInnerCmd = `timeout 10s g++ ${filename} -o main`;
             executeInnerCmd = `timeout 2s ./main < input.txt`;
         } else if (runner.name === 'java') {
-            compileInnerCmd = `javac ${filename}`;
+            compileInnerCmd = `timeout 10s javac ${filename}`;
             executeInnerCmd = `timeout 2s java Main < input.txt`;
         } else if (runner.name === 'python') {
             executeInnerCmd = `timeout 2s python3 ${filename} < input.txt`;
@@ -53,80 +51,75 @@ export const executeCode = async (code, languageId, stdin) => {
 
         // --- COMPILATION STEP ---
         if (compileInnerCmd) {
-            let compileContainerId = '';
             try {
-                // 1. Create container
-                const createCompileCmd = `docker create --network none -w /sandbox ${runner.image} sh -c "${compileInnerCmd}"`;
-                const { stdout: compileCreateOut } = await execAsync(createCompileCmd);
-                compileContainerId = compileCreateOut.trim();
+                const compileCmd = `
+                    docker run --rm \
+                    --network none \
+                    --memory=512m \
+                    --cpus=1 \
+                    -v "${jobDir}:/sandbox" \
+                    -w /sandbox \
+                    ${runner.image} \
+                    sh -c "${compileInnerCmd}"
+                `;
 
-                // 2. Copy files into container
-                await execAsync(`docker cp ${jobDir}/. ${compileContainerId}:/sandbox`);
+                await execAsync(compileCmd, { timeout: 30000 });
 
-                // 3. Start container (without -a so it stays running for file copying)
-                await execAsync(`docker start ${compileContainerId}`, { timeout: 20000 });
-                
-                // 4. Wait for compilation to complete
-                await execAsync(`docker wait ${compileContainerId}`, { timeout: 20000 });
-                
-                // 5. Copy the compiled binary back to our job directory for the execution step
-                if (runner.name === "cpp") {
-                    await execAsync(
-                        `docker cp ${compileContainerId}:/sandbox/main ${jobDir}/main`
-                    );
-                }
-                else if (runner.name === "java") {
-                    // Copy every generated .class file (Main.class, Solution.class, etc.)
-                    const { stdout } = await execAsync(
-                        `docker cp ${compileContainerId}:/sandbox/. ${jobDir}/`
-                    );
-                }
             } catch (err) {
+                if (err.code === 124 || err.killed) {
+                    return {
+                        status: { id: 5 },
+                        compile_output: "Compilation timed out"
+                    };
+                }
+
                 return {
-                    status: { id: 6 }, // Compile Error
+                    status: { id: 6 },
                     compile_output: err.stderr || err.stdout || err.message
                 };
-            } finally {
-                if (compileContainerId) {
-                    await execAsync(`docker rm -f ${compileContainerId}`).catch(() => {});
-                }
             }
         }
 
         // --- EXECUTION STEP ---
-        let execContainerId = '';
-        try {
-            // 1. Create container
-            const createExecCmd = `docker create --network none --memory 256m --cpus 1 -w /sandbox ${runner.image} sh -c "${executeInnerCmd}"`;
-            const { stdout: execCreateOut } = await execAsync(createExecCmd);
-            execContainerId = execCreateOut.trim();
+            try {
+            const executeCmd = `
+                docker run --rm \
+                --network none \
+                --memory=256m \
+                --cpus=1 \
+                -v "${jobDir}:/sandbox" \
+                -w /sandbox \
+                ${runner.image} \
+                sh -c "${executeInnerCmd}"
+            `;
 
-            // 2. Copy files (including compiled binary if any) into container
-            await execAsync(`docker cp ${jobDir}/. ${execContainerId}:/sandbox`);
+            const { stdout, stderr } = await execAsync(executeCmd, {
+                timeout: 15000
+            });
 
-            // 3. Start container
-            const { stdout, stderr } = await execAsync(`docker start -a ${execContainerId}`, { timeout: 15000 });
-            
             return {
-                status: { id: 3 }, // Accepted
-                stdout: stdout,
-                stderr: stderr
+                status: { id: 3 },
+                stdout: stdout.trim(),
+                stderr: stderr.trim()
             };
-        } catch (err) {
-            // If the start command fails, we check for exit code 124 (timeout command) or timeout of execAsync
-            if (err.killed || err.code === 124 || (err.message && err.message.includes('124'))) {
-                return {
-                    status: { id: 5 } // Time Limit Exceeded
-                };
-            }
+
+            } catch (err) {
+
+            const output = `${err.stdout || ""} ${err.stderr || ""}`;
+                if (
+                    err.code === 124 ||
+                    err.killed ||
+                    output.includes("124")
+                ) {
+                    return {
+                        status: { id: 5 }
+                    };
+                }
+
             return {
-                status: { id: 7 }, // Runtime Error
+                status: { id: 7 },
                 stderr: err.stderr || err.stdout || err.message
             };
-        } finally {
-            if (execContainerId) {
-                await execAsync(`docker rm -f ${execContainerId}`).catch(() => {});
-            }
         }
 
     } catch (err) {
