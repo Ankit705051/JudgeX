@@ -12,7 +12,13 @@ const generateCppOutputWriting = (returnType) => {
         case "TreeNode":
             return `    cout << serializeTree(result) << endl;`;
 
+        case "graph":
+        case "Graph":
+            return `    cout << serializeGraph(result) << endl;`;
+
         case "int[]":
+        case "List<Integer>":
+        case "ArrayList<Integer>":
             return `    cout << "[";
     for (size_t i = 0; i < result.size(); i++) {
         if (i > 0) cout << ",";
@@ -21,6 +27,8 @@ const generateCppOutputWriting = (returnType) => {
     cout << "]" << endl;`;
 
         case "string[]":
+        case "List<String>":
+        case "ArrayList<String>":
             return `    cout << "[";
     for (size_t i = 0; i < result.size(); i++) {
         if (i > 0) cout << ",";
@@ -29,6 +37,7 @@ const generateCppOutputWriting = (returnType) => {
     cout << "]" << endl;`;
 
         case "bool[]":
+        case "List<Boolean>":
             return `    cout << "[";
     for (size_t i = 0; i < result.size(); i++) {
         if (i > 0) cout << ",";
@@ -37,6 +46,7 @@ const generateCppOutputWriting = (returnType) => {
     cout << "]" << endl;`;
 
         case "double[]":
+        case "List<Double>":
             return `    cout << "[";
     for (size_t i = 0; i < result.size(); i++) {
         if (i > 0) cout << ",";
@@ -45,6 +55,7 @@ const generateCppOutputWriting = (returnType) => {
     cout << "]" << endl;`;
 
         case "long[]":
+        case "List<Long>":
             return `    cout << "[";
     for (size_t i = 0; i < result.size(); i++) {
         if (i > 0) cout << ",";
@@ -53,6 +64,7 @@ const generateCppOutputWriting = (returnType) => {
     cout << "]" << endl;`;
 
         case "int[][]":
+        case "List<List<Integer>>":
             return `    cout << "[";
     for (size_t i = 0; i < result.size(); i++) {
         if (i > 0) cout << ",";
@@ -107,19 +119,62 @@ const generateJavaOutputWriting = (returnType) => {
         case "TreeNode":
             return `        System.out.println(serializeTree(result));`;
 
+        case "graph":
+        case "Graph":
+            return `        System.out.println(serializeGraph(result));`;
+
+        case "List<Integer>":
+        case "ArrayList<Integer>":
+        case "List<Long>":
+        case "List<Double>":
+        case "List<Boolean>":
+            return `        System.out.println(result.toString().replace(" ", ""));`;
+
+        case "List<String>":
+        case "ArrayList<String>":
+            return `        StringBuilder sb = new StringBuilder();
+        sb.append("[");
+        for (int i = 0; i < result.size(); i++) {
+            if (i > 0) sb.append(",");
+            sb.append("\\"").append(result.get(i)).append("\\"");
+        }
+        sb.append("]");
+        System.out.println(sb.toString());`;
+
+        case "List<List<Integer>>":
+            return `        StringBuilder sb = new StringBuilder();
+        sb.append("[");
+        for (int i = 0; i < result.size(); i++) {
+            if (i > 0) sb.append(",");
+            sb.append("[");
+            List<Integer> row = result.get(i);
+            for (int j = 0; j < row.size(); j++) {
+                if (j > 0) sb.append(",");
+                sb.append(row.get(j));
+            }
+            sb.append("]");
+        }
+        sb.append("]");
+        System.out.println(sb.toString());`;
+
         case "int[]":
         case "long[]":
         case "double[]":
+            return `        StringBuilder sb = new StringBuilder();
+        sb.append("[");
+        for (int i = 0; i < result.length; i++) {
+            if (i > 0) sb.append(",");
+            sb.append(result[i]);
+        }
+        sb.append("]");
+        System.out.println(sb.toString());`;
+
         case "bool[]":
             return `        StringBuilder sb = new StringBuilder();
         sb.append("[");
         for (int i = 0; i < result.length; i++) {
             if (i > 0) sb.append(",");
-            if (result instanceof boolean[]) {
-                sb.append(result[i] ? "true" : "false");
-            } else {
-                sb.append(result[i]);
-            }
+            sb.append(result[i] ? "true" : "false");
         }
         sb.append("]");
         System.out.println(sb.toString());`;
@@ -160,16 +215,6 @@ const generateJavaOutputWriting = (returnType) => {
                 sb.append("\\"").append(result[i][j]).append("\\"");
             }
             sb.append("]");
-        }
-        sb.append("]");
-        System.out.println(sb.toString());`;
-
-       case "bool[]":
-    return `        StringBuilder sb = new StringBuilder();
-        sb.append("[");
-        for (int i = 0; i < result.length; i++) {
-            if (i > 0) sb.append(",");
-            sb.append(result[i] ? "true" : "false");
         }
         sb.append("]");
         System.out.println(sb.toString());`;

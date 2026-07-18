@@ -151,3 +151,4 @@ export const getAllProblemQuerySchema = z.object({
         .optional()
         .transform(val => val?.trim() || undefined)
 });
+export const bulkProblemSchema = z.array(createProblemSchema).min(1);

@@ -46,8 +46,13 @@ const serializerRegistry = {
 const getSerializer = (type, language) => {
     const normalizedType = normalizeType(type).toLowerCase();
     
-    if (normalizedType === 'treenode' || normalizedType === 'listnode') {
-        const structureType = normalizedType === 'treenode' ? 'tree' : 'linkedList';
+    if (normalizedType === 'treenode' || normalizedType === 'listnode' || normalizedType === 'graph') {
+        const structureType =
+            normalizedType === 'treenode'
+                ? 'tree'
+                : normalizedType === 'listnode'
+                    ? 'linkedList'
+                    : 'graph';
         return serializerRegistry[structureType]?.[language];
     }
     

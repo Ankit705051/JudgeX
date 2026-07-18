@@ -33,10 +33,9 @@ router.post(
     resetPassword
 );
 router.get("/reset-password/:token", validate(resetTokenParamSchema,"params"), (req, res) => {
-
     const { token } = req.params;
-
-    res.send(`
+    const baseUri = process.env.BASE_URI || "http://localhost:3000";
+    res.status(200).send(`
 
         <!DOCTYPE html>
 
@@ -68,7 +67,7 @@ router.get("/reset-password/:token", validate(resetTokenParamSchema,"params"), (
 
             <h2>Reset Password</h2>
 
-            <form action="${process.env.BASE_URI}/api/v1/auth/reset-password/${token}" method="POST">
+            <form action="${baseUri}/api/v1/auth/reset-password/${token}" method="POST">
 
                 <div class="form-group">
 

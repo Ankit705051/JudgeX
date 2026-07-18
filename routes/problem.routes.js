@@ -1,8 +1,8 @@
 import express from "express";
-import { createProblem, getAllProblem,getProblemBySlug,updateProblem,deleteProblem } from "../controllers/problem.controllers.js";
+import { createProblem, getAllProblem,getProblemBySlug,updateProblem,deleteProblem,bulkCreateProblems } from "../controllers/problem.controllers.js";
 import { authenticate } from "../middleware/auth.middleware.js";
 import { authorize } from "../middleware/auth.middleware.js";
-import {createProblemSchema, problemIdSchema,updateProblemSchema,slugSchema, getAllProblemQuerySchema } from "../validation/problem.validate.js";
+import {createProblemSchema, problemIdSchema,updateProblemSchema,slugSchema, getAllProblemQuerySchema,bulkProblemSchema } from "../validation/problem.validate.js";
 import { validate } from "../middleware/validate.middleware.js";
 
 const router = express.Router();
@@ -19,5 +19,5 @@ router.patch(
     updateProblem
 );
 router.delete("/:id", authenticate, authorize("admin"), validate(problemIdSchema,"params"), deleteProblem);
-
+router.post("/bulk",authenticate,authorize("admin"),validate(bulkProblemSchema,"body"),bulkCreateProblems);
 export default router;

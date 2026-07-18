@@ -54,6 +54,14 @@ export const testCaseIdSchema = z.object({
 export const deleteTestCaseSchema = z.object({
     id: ObjectIdSchema,
 });
+export const bulkCreateTestCaseSchema = z.object({
+    testcases: z.array(z.object({
+        input: z.string().trim().min(1, "Input cannot be empty"),
+        output: z.string().trim().min(1, "Output cannot be empty"),
+        explanation: z.string().trim().optional(),
+        isHidden: z.boolean().optional().default(false),
+    })).min(1, "At least one test case must be provided"),
+});
 
 
 

@@ -16,6 +16,15 @@ const TYPE_MAPPINGS = {
         "int[][]": "vector<vector<int>>",
         "string[][]": "vector<vector<string>>",
 
+        "List<Integer>": "vector<int>",
+        "List<Long>": "vector<long long>",
+        "List<Double>": "vector<double>",
+        "List<Boolean>": "vector<bool>",
+        "List<String>": "vector<string>",
+        "List<List<Integer>>": "vector<vector<int>>",
+        "ArrayList<Integer>": "vector<int>",
+        "ArrayList<String>": "vector<string>",
+
         ListNode: "ListNode*",
         TreeNode: "TreeNode*",
     },
@@ -26,6 +35,14 @@ const TYPE_MAPPINGS = {
         double: "double",
         bool: "boolean",
         string: "String",
+        "List<Integer>": "List<Integer>",
+        "List<Long>": "List<Long>",
+        "List<Double>": "List<Double>",
+        "List<Boolean>": "List<Boolean>",
+        "List<String>": "List<String>",
+        "List<List<Integer>>": "List<List<Integer>>",
+        "ArrayList<Integer>": "ArrayList<Integer>",
+        "ArrayList<String>": "ArrayList<String>",
 
         "int[]": "int[]",
         "long[]": "long[]",
@@ -56,6 +73,15 @@ const TYPE_MAPPINGS = {
         "int[][]": "List[List[int]]",
         "string[][]": "List[List[str]]",
 
+        "List<Integer>": "List[int]",
+        "List<Long>": "List[int]",
+        "List<Double>": "List[float]",
+        "List<Boolean>": "List[bool]",
+        "List<String>": "List[str]",
+        "List<List<Integer>>": "List[List[int]]",
+        "ArrayList<Integer>": "List[int]",
+        "ArrayList<String>": "List[str]",
+
         ListNode: "ListNode",
         TreeNode: "TreeNode",
     },
@@ -76,6 +102,15 @@ const TYPE_MAPPINGS = {
         "int[][]": "number[][]",
         "string[][]": "string[][]",
 
+        "List<Integer>": "number[]",
+        "List<Long>": "number[]",
+        "List<Double>": "number[]",
+        "List<Boolean>": "boolean[]",
+        "List<String>": "string[]",
+        "List<List<Integer>>": "number[][]",
+        "ArrayList<Integer>": "number[]",
+        "ArrayList<String>": "string[]",
+
         ListNode: "ListNode",
         TreeNode: "TreeNode",
     },
@@ -84,24 +119,52 @@ const TYPE_MAPPINGS = {
 const normalizeType = (type) => {
     if (!type) return "int";
 
-    const normalized = type.trim();
+    const normalized = type
+        .trim()
+        .replace(/^std::/g, "")
+        .replace(/\s+/g, " ")
+        .replace(/\s*([<>,\[\]])\s*/g, "$1")
+        .replace(/[&*]+$/g, "")
+        .trim();
 
     const typeMap = {
         // Primitive
         int: "int",
         integer: "int",
+        Integer: "int",
 
         long: "long",
+        Long: "long",
         "long long": "long",
 
         float: "double",
         double: "double",
+        Float: "double",
+        Double: "double",
 
         bool: "bool",
         boolean: "bool",
+        Boolean: "bool",
 
         string: "string",
+        String: "string",
         str: "string",
+
+        "List<Integer>": "List<Integer>",
+        "List<Long>": "List<Long>",
+        "List<Double>": "List<Double>",
+        "List<Boolean>": "List<Boolean>",
+        "List<String>": "List<String>",
+        "List<List<Integer>>": "List<List<Integer>>",
+        "ArrayList<Integer>": "ArrayList<Integer>",
+        "ArrayList<String>": "ArrayList<String>",
+
+        "list<int>": "List<Integer>",
+        "list<long>": "List<Long>",
+        "list<double>": "List<Double>",
+        "list<bool>": "List<Boolean>",
+        "list<string>": "List<String>",
+        "list<list<int>>": "List<List<Integer>>",
 
         char: "char",
         "char[]": "string",
@@ -111,7 +174,6 @@ const normalizeType = (type) => {
         "integer[]": "int[]",
         array: "int[]",
         "vector<int>": "int[]",
-        "list<int>": "int[]",
 
         "long[]": "long[]",
         "vector<long long>": "long[]",
@@ -127,7 +189,6 @@ const normalizeType = (type) => {
         "string[]": "string[]",
         "str[]": "string[]",
         "vector<string>": "string[]",
-        "list<string>": "string[]",
 
         // 2D Arrays
         "int[][]": "int[][]",
@@ -135,6 +196,9 @@ const normalizeType = (type) => {
 
         "string[][]": "string[][]",
         "vector<vector<string>>": "string[][]",
+
+        graph: "graph",
+        Graph: "graph",
 
         // Custom Types
         listnode: "ListNode",
@@ -157,7 +221,7 @@ const is2DArrayType = (type) => {
 
 const isCustomType = (type) => {
     const normalized = normalizeType(type);
-    return normalized === "ListNode" || normalized === "TreeNode";
+    return normalized === "ListNode" || normalized === "TreeNode" || normalized === "graph" || normalized === "Graph";
 };
 
 const getLanguageType = (type, language) => {

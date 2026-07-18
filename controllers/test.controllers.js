@@ -135,3 +135,35 @@ export const deleteTestcase=async(req,res)=>{
 
     }
 }
+
+export const bulkCreateTestCase = async (req, res) => {
+    try {
+        const { problemId } = req.validated.params;
+        const { testcases } = req.validated.body;
+
+        const problem = await Problem.findById(problemId);
+        if (!problem) {
+            return sendError(res, 404, "problem not found");
+        }
+
+        const formattedTestCases = testcases.map(tc => ({
+            problemId,
+            input: tc.input,
+            output: tc.output,
+            explanation: tc.explanation,
+            isHidden: tc.isHidden ?? false
+        }));
+
+        const createdTestCases = await TestCase.insertMany(formattedTestCases);
+
+        return sendSuccess(
+            res,
+            201,
+            `${createdTestCases.length} test cases created successfully`,
+            createdTestCases
+        );
+    } catch (error) {
+        console.error(error);
+        return sendError(res, 500, "Error creating bulk test cases");
+    }
+};
