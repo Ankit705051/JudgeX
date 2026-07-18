@@ -29,209 +29,99 @@ const validatePassword=(password)=>{
 }
 
 
-export const sendVerificationEmail=async(user,verificationToken)=>{
-    try{
-    const verifyUrl =`${process.env.BASE_URI}/api/v1/auth/verify/${verificationToken}`;
-     console.log("Recipient:", user.email);
-       const { data, error } = await resend.emails.send({
-      from: `${process.env.APP_NAME || "JudgeX"} <noreply@judgex.publicvm.com>`,
-      to: user.email,
-      subject: "Verify your email",
-        html: `
-        <div style="background:#f4f7fb;padding:40px 20px;font-family:'Segoe UI',Arial,sans-serif;">
-            <div style="max-width:600px;margin:auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.08);">
-                <div style="background:linear-gradient(135deg,#2563eb,#7c3aed);padding:40px 30px;text-align:center;">
-                    <h1 style="color:white;margin:0;font-size:32px;">
-                        Welcome to JudgeX 🚀
-                    </h1>
-                    <p style="color:rgba(255,255,255,0.9);margin-top:10px;font-size:16px;">
-                        Your coding journey starts here.
-                    </p>
-                </div>
-            <div style="padding:40px 30px;">
-                <h2 style="color:#111827;margin-bottom:15px;">
-                    Hi ${user.name || 'Coder'} 👋
-                </h2>
-
-                <p style="color:#4b5563;line-height:1.8;">
-                    Thank you for joining JudgeX. To activate your account and start solving coding challenges, please verify your email address.
-                </p>
-
-                    <div style="text-align:center;margin:35px 0;">
-                        <a href="${verifyUrl}"
-                        style="
-                                display:inline-block;
-                                background:linear-gradient(135deg,#2563eb,#7c3aed);
-                                color:white;
-                                text-decoration:none;
-                                padding:14px 32px;
-                                border-radius:10px;
-                                font-weight:600;
-                                font-size:16px;
-                                box-shadow:0 8px 20px rgba(59,130,246,0.25);
-                        ">
-                            Verify Email
-                        </a>
+export const sendVerificationEmail = async (user, verificationToken) => {
+    try {
+        const verifyUrl = `${process.env.BASE_URI}/api/v1/auth/verify/${verificationToken}`;
+        
+        const { data, error } = await resend.emails.send({
+            from: `${process.env.APP_NAME || "JudgeX"} <judgex@judgex.publicvm.com>`,
+            to: user.email,
+            subject: "Verify your email",
+            html: `
+            <div style="background:#f4f7fb;padding:40px 20px;font-family:'Segoe UI',Arial,sans-serif;">
+                <div style="max-width:600px;margin:auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.08);">
+                    <div style="background:linear-gradient(135deg,#2563eb,#7c3aed);padding:40px 30px;text-align:center;">
+                        <h1 style="color:white;margin:0;font-size:32px;">Welcome to JudgeX 🚀</h1>
+                        <p style="color:rgba(255,255,255,0.9);margin-top:10px;font-size:16px;">Your coding journey starts here.</p>
                     </div>
-
-                <p style="color:#6b7280;font-size:14px;">
-                    If the button doesn't work, copy and paste the following link into your browser:
-                </p>
-
-                <div style="
-                    background:#f9fafb;
-                    border:1px solid #e5e7eb;
-                    padding:15px;
-                    border-radius:10px;
-                    word-break:break-all;
-                    color:#374151;
-                    font-size:13px;
-                ">
-                    ${verifyUrl}
+                    <div style="padding:40px 30px;">
+                        <h2 style="color:#111827;margin-bottom:15px;">Hi ${user.name || 'Coder'} 👋</h2>
+                        <p style="color:#4b5563;line-height:1.8;">Thank you for joining JudgeX. To activate your account and start solving coding challenges, please verify your email address.</p>
+                        <div style="text-align:center;margin:35px 0;">
+                            <a href="${verifyUrl}" style="display:inline-block;background:linear-gradient(135deg,#2563eb,#7c3aed);color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:600;font-size:16px;box-shadow:0 8px 20px rgba(59,130,246,0.25);">
+                                Verify Email
+                            </a>
+                        </div>
+                        <p style="color:#6b7280;font-size:14px;">If the button doesn't work, copy and paste the following link into your browser:</p>
+                        <div style="background:#f9fafb;border:1px solid #e5e7eb;padding:15px;border-radius:10px;word-break:break-all;color:#374151;font-size:13px;">
+                            ${verifyUrl}
+                        </div>
+                        <div style="margin-top:30px;padding:18px;border-left:4px solid #2563eb;background:#eff6ff;border-radius:8px;">
+                            <p style="margin:0;color:#1e40af;font-size:14px;">
+                                If you did not create a JudgeX account using this email address, you can safely ignore this message.
+                            </p>
+                        </div>
+                    </div>
+                    <div style="border-top:1px solid #e5e7eb;padding:25px;text-align:center;background:#fafafa;">
+                        <p style="margin:0;color:#6b7280;font-size:13px;">Need help? Contact the JudgeX support team.</p>
+                        <p style="margin-top:15px;color:#9ca3af;font-size:12px;">© ${new Date().getFullYear()} JudgeX. All rights reserved.</p>
+                    </div>
                 </div>
+            </div>`
+        });
 
-                <div style="
-                    margin-top:30px;
-                    padding:18px;
-                    border-left:4px solid #2563eb;
-                    background:#eff6ff;
-                    border-radius:8px;
-                ">
-                    <p style="margin:0;color:#1e40af;font-size:14px;">
-                      If you didn't request a password reset, please ignore this email. Your account remains secure.
-                    </p>
-                </div>
-            </div>
-
-            <!-- Footer -->
-            <div style="
-                border-top:1px solid #e5e7eb;
-                padding:25px;
-                text-align:center;
-                background:#fafafa;
-            ">
-                <p style="margin:0;color:#6b7280;font-size:13px;">
-                    Need help? Contact the JudgeX support team.
-                </p>
-
-                <p style="margin-top:15px;color:#9ca3af;font-size:12px;">
-                    © ${new Date().getFullYear()} JudgeX. All rights reserved.
-                </p>
-            </div>
-
-        </div>
-    </div>
-    `});
-      console.log("Verification email sent successfully.");
-    }catch(error){
-        console.error('Error sending reset password :', error);
+        if (error) throw new Error(error.message);
+        console.log("Verification email status:", data);
+    } catch (error) {
+        console.error('Error sending verification email:', error);
         throw error;
     }
 };
 
-
-
-export const sendPasswordResetEmail=async(user,resetToken)=>{
-    try{
-    const resetUrl =`${process.env.BASE_URI}/api/v1/auth/reset-password/${resetToken}`;
-    
-    const { data, error } = await resend.emails.send({
-      from: `${process.env.APP_NAME || "JudgeX"} <noreply@judgex.publicvm.com>`,
-      to: user.email,
-      subject: "Reset your password",
-        html: `
-        <div style="background:#f4f7fb;padding:40px 20px;font-family:'Segoe UI',Arial,sans-serif;">
-            <div style="max-width:600px;margin:auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.08);">
-                <div style="background:linear-gradient(135deg,#2563eb,#7c3aed);padding:40px 30px;text-align:center;">
-                    <h1 style="color:white;margin:0;font-size:32px;">
-                       Reset Your Password 🔐
-                    </h1>
-                    <p style="color:rgba(255,255,255,0.9);margin-top:10px;font-size:16px;">
-                        Secure access to your JudgeX account
-                    </p>
-                </div>
-            <div style="padding:40px 30px;">
-                <h2 style="color:#111827;margin-bottom:15px;">
-                    Hi ${user.name || 'Coder'} 👋
-                </h2>
-
-                <p style="color:#4b5563;line-height:1.8;">
-                    We received a request to reset the password for your JudgeX account. Click the button below to create a new password.
-                </p>
-
-                    <div style="text-align:center;margin:35px 0;">
-                        <a href="${resetUrl}"
-                        style="
-                                display:inline-block;
-                                background:linear-gradient(135deg,#2563eb,#7c3aed);
-                                color:white;
-                                text-decoration:none;
-                                padding:14px 32px;
-                                border-radius:10px;
-                                font-weight:600;
-                                font-size:16px;
-                                box-shadow:0 8px 20px rgba(59,130,246,0.25);
-                        ">
-                            Reset Passowrd
-                        </a>
+export const sendPasswordResetEmail = async (user, resetToken) => {
+    try {
+        const resetUrl = `${process.env.BASE_URI}/api/v1/auth/reset-password/${resetToken}`;
+        
+        const { data, error } = await resend.emails.send({
+            from: `${process.env.APP_NAME || "JudgeX"} <judgex@judgex.publicvm.com>`,
+            to: user.email,
+            subject: "Reset your password",
+            html: `
+            <div style="background:#f4f7fb;padding:40px 20px;font-family:'Segoe UI',Arial,sans-serif;">
+                <div style="max-width:600px;margin:auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.08);">
+                    <div style="background:linear-gradient(135deg,#2563eb,#7c3aed);padding:40px 30px;text-align:center;">
+                        <h1 style="color:white;margin:0;font-size:32px;">Reset Your Password 🔐</h1>
+                        <p style="color:rgba(255,255,255,0.9);margin-top:10px;font-size:16px;">Secure access to your JudgeX account</p>
                     </div>
-
-                <p style="color:#6b7280;font-size:14px;">
-                    If the button doesn't work, copy and paste the following link into your browser:
-                </p>
-
-                <div style="
-                    background:#f9fafb;
-                    border:1px solid #e5e7eb;
-                    padding:15px;
-                    border-radius:10px;
-                    word-break:break-all;
-                    color:#374151;
-                    font-size:13px;
-                ">
-                    ${resetUrl}
+                    <div style="padding:40px 30px;">
+                        <h2 style="color:#111827;margin-bottom:15px;">Hi ${user.name || 'Coder'} 👋</h2>
+                        <p style="color:#4b5563;line-height:1.8;">We received a request to reset the password for your JudgeX account. Click the button below to create a new password.</p>
+                        <div style="text-align:center;margin:35px 0;">
+                            <a href="${resetUrl}" style="display:inline-block;background:linear-gradient(135deg,#2563eb,#7c3aed);color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:600;font-size:16px;box-shadow:0 8px 20px rgba(59,130,246,0.25);">
+                                Reset Password
+                            </a>
+                        </div>
+                        <p style="color:#6b7280;font-size:14px;">If the button doesn't work, copy and paste the following link into your browser:</p>
+                        <div style="background:#f9fafb;border:1px solid #e5e7eb;padding:15px;border-radius:10px;word-break:break-all;color:#374151;font-size:13px;">
+                            ${resetUrl}
+                        </div>
+                        <div style="margin-top:30px;padding:18px;border-left:4px solid #2563eb;background:#eff6ff;border-radius:8px;">
+                            <p style="margin:0;color:#1e40af;font-size:14px;">⚠️ This password reset link will expire in 10 minutes.</p>
+                        </div>
+                    </div>
+                    <div style="border-top:1px solid #e5e7eb;padding:25px;text-align:center;background:#fafafa;">
+                        <p style="margin:0;color:#6b7280;font-size:13px;">If you didn't request a password reset, you can safely ignore this email.</p>
+                        <p style="margin-top:15px;color:#9ca3af;font-size:12px;">© ${new Date().getFullYear()} JudgeX. All rights reserved.</p>
+                    </div>
                 </div>
+            </div>`
+        });
 
-                <div style="
-                    margin-top:30px;
-                    padding:18px;
-                    border-left:4px solid #2563eb;
-                    background:#eff6ff;
-                    border-radius:8px;
-                ">
-                    <p style="margin:0;color:#1e40af;font-size:14px;">
-                        ⚠️ This password reset link will expire in 10 minutes.
-                    </p>
-                </div>
-            </div>
-
-            <!-- Footer -->
-            <div style="
-                border-top:1px solid #e5e7eb;
-                padding:25px;
-                text-align:center;
-                background:#fafafa;
-            ">
-                <p style="margin:0;color:#6b7280;font-size:13px;">
-                    If you didn't create an account, you can safely ignore this email.
-                </p>
-
-                <p style="margin-top:15px;color:#9ca3af;font-size:12px;">
-                    © ${new Date().getFullYear()} JudgeX. All rights reserved.
-                </p>
-            </div>
-
-        </div>
-    </div>
-    `});
-      if (error) {
-        console.error("Resend Error:", error);
-        throw new Error(error.message);
-        }
-    cconsole.log("Email sent:", data);
-    }catch(error){
+        if (error) throw new Error(error.message);
+        console.log("Password reset status:", data);
+    } catch (error) {
         console.error('Error in reset password:', error);
-        throw error;
+        throw error; 
     }
 };
 
@@ -735,5 +625,4 @@ export const activateUser=async(req,res)=>{
         return sendError(res,500,error.message);
     }
 }
-
 
