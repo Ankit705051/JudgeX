@@ -61,6 +61,54 @@ export const createProblem = async (req, res) => {
     }
 }
 
+export const bulkCreateProblems = async (req, res) => {
+    try {
+        const problems = req.validated.body;
+        const slugs = problems.map(p => p.slug);
+        const titles = problems.map(p => p.title);
+
+        const existing = await Problem.find({
+            $or: [
+                { slug: { $in: slugs } },
+                { title: { $in: titles } }
+            ]
+        });
+
+        if (existing.length > 0) {
+            return sendError(
+                res,
+                400,
+                "Some problems already exist.",
+                existing.map(p => ({
+                    title: p.title,
+                    slug: p.slug
+                }))
+            );
+        }
+
+        const formattedProblems = problems.map(problem => ({
+            ...problem,
+            examples: problem.examples?.map(({ explanation, ...exmaples }) =>
+                explanation?.trim()
+                    ? { ...exmaples, explanation: explanation.trim() }
+                    : exmaples
+            )
+        }));
+
+        const createdProblems = await Problem.insertMany(formattedProblems);
+
+        return sendSuccess(
+            res,
+            201,
+            `${createdProblems.length} problems imported successfully.`,
+            createdProblems
+        );
+
+    } catch (error) {
+        console.error(error);
+        return sendError(res, 500, "Internal server error");
+    }
+};
 
 export const getAllProblem = async (req, res) => {
     try {
