@@ -1,0 +1,25 @@
+
+[Unit]
+Description=JudgeX Submission Worker (BullMQ)
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=__APP_DIR__
+
+Environment=NODE_ENV=production
+EnvironmentFile=__APP_DIR__/.env
+
+ExecStart=/usr/bin/node worker/submission.worker.js
+
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
+

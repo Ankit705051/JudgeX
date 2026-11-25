@@ -1,0 +1,24 @@
+
+[Unit]
+Description=JudgeX Leaderboard Consumer (Redis Pub/Sub)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=__APP_DIR__
+
+Environment=NODE_ENV=production
+EnvironmentFile=__APP_DIR__/.env
+
+ExecStart=/usr/bin/node consumers/leaderboard.consumer.js
+
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target
+
