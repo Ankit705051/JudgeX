@@ -1,10 +1,20 @@
 import Redis from "ioredis";
+import dotenv from "dotenv";
 import { contestParticipant } from "../schema/contestParticipant.js";
+import { connectDB } from "../database/db.js";
 
-const subscriber = new Redis();
-const redis = new Redis();
+dotenv.config();
+
+const redisOpts = { maxRetriesPerRequest: null };
+const subscriber = process.env.REDIS_URL
+    ? new Redis(process.env.REDIS_URL, redisOpts)
+    : new Redis(redisOpts);
+const redis = process.env.REDIS_URL
+    ? new Redis(process.env.REDIS_URL, redisOpts)
+    : new Redis(redisOpts);
 
 async function startLeaderboardConsumer() {
+    await connectDB();
     await subscriber.subscribe("contest-score-updated");
 
     console.log("leaderboard consumer started ...");
