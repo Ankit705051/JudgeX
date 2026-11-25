@@ -27,6 +27,8 @@ const TYPE_MAPPINGS = {
 
         ListNode: "ListNode*",
         TreeNode: "TreeNode*",
+        graph: "vector<vector<int>>",
+        Graph: "vector<vector<int>>",
     },
 
     java: {
@@ -55,6 +57,8 @@ const TYPE_MAPPINGS = {
 
         ListNode: "ListNode",
         TreeNode: "TreeNode",
+        graph: "List<List<Integer>>",
+        Graph: "List<List<Integer>>",
     },
 
     python: {
@@ -84,6 +88,8 @@ const TYPE_MAPPINGS = {
 
         ListNode: "ListNode",
         TreeNode: "TreeNode",
+        graph: "list",
+        Graph: "list",
     },
 
     javascript: {
@@ -113,6 +119,8 @@ const TYPE_MAPPINGS = {
 
         ListNode: "ListNode",
         TreeNode: "TreeNode",
+        graph: "Array",
+        Graph: "Array",
     },
 };
 
@@ -121,6 +129,7 @@ const normalizeType = (type) => {
 
     const normalized = type
         .trim()
+        .replace(/^(struct|class|enum)\s+/g, "")
         .replace(/^std::/g, "")
         .replace(/\s+/g, " ")
         .replace(/\s*([<>,\[\]])\s*/g, "$1")
@@ -172,29 +181,37 @@ const normalizeType = (type) => {
         // 1D Arrays
         "int[]": "int[]",
         "integer[]": "int[]",
+        "Integer[]": "int[]",
         array: "int[]",
         "vector<int>": "int[]",
 
         "long[]": "long[]",
+        "Long[]": "long[]",
         "vector<long long>": "long[]",
 
         "double[]": "double[]",
+        "Double[]": "double[]",
         "float[]": "double[]",
+        "Float[]": "double[]",
         "vector<double>": "double[]",
 
         "bool[]": "bool[]",
         "boolean[]": "bool[]",
+        "Boolean[]": "bool[]",
         "vector<bool>": "bool[]",
 
         "string[]": "string[]",
+        "String[]": "string[]",
         "str[]": "string[]",
         "vector<string>": "string[]",
 
         // 2D Arrays
         "int[][]": "int[][]",
+        "Integer[][]": "int[][]",
         "vector<vector<int>>": "int[][]",
 
         "string[][]": "string[][]",
+        "String[][]": "string[][]",
         "vector<vector<string>>": "string[][]",
 
         graph: "graph",

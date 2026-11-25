@@ -16,6 +16,7 @@ import { normalizeType } from "./typeRegistry.js";
 
 import * as linkedList from "./structures/linkedList.js";
 import * as tree from "./structures/tree.js";
+import * as graph from "./structures/graph.js";
 
 const buildPython = (userCode, problem) => {
     if (!problem) {
@@ -54,6 +55,11 @@ const buildPython = (userCode, problem) => {
             (p) => normalizeType(p.type) === "TreeNode"
         ) || normalizedReturnType === "TreeNode";
 
+    const needsGraph =
+        parameters.some(
+            (p) => normalizeType(p.type) === "graph"
+        ) || normalizedReturnType === "graph";
+
     // Generate input parsing
     const { parsingCode, paramNames } =
         generatePythonInputParsing(parameters);
@@ -74,11 +80,11 @@ const buildPython = (userCode, problem) => {
     // Structure definitions
     let structureDefs = "";
 
-    if (needsListNode) {
+    if (needsListNode && !/class\s+ListNode\s*:/.test(userCode)) {
         structureDefs += linkedList.pythonListNodeDef + "\n";
     }
 
-    if (needsTreeNode) {
+    if (needsTreeNode && !/class\s+TreeNode\s*:/.test(userCode)) {
         structureDefs += tree.pythonTreeNodeDef + "\n";
     }
 
@@ -93,6 +99,10 @@ const buildPython = (userCode, problem) => {
         parsers += tree.pythonTreeParser + "\n";
     }
 
+    if (needsGraph) {
+        parsers += graph.pythonGraphParser + "\n";
+    }
+
     // Serializers
     let serializers = "";
 
@@ -102,6 +112,10 @@ const buildPython = (userCode, problem) => {
 
     if (needsTreeNode) {
         serializers += tree.pythonTreeSerializer + "\n";
+    }
+
+    if (needsGraph) {
+        serializers += graph.pythonGraphSerializer + "\n";
     }
 
     return `

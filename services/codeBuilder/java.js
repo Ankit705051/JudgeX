@@ -10,6 +10,7 @@ import {
 import { normalizeType } from "./typeRegistry.js";
 import * as linkedList from "./structures/linkedList.js";
 import * as tree from "./structures/tree.js";
+import * as graph from "./structures/graph.js";
 
 const buildJava = (userCode, problem) => {
     // Get metadata from problem definition
@@ -40,17 +41,25 @@ const buildJava = (userCode, problem) => {
             (p) => normalizeType(p.type) === "TreeNode"
         ) || normalizedReturnType === "TreeNode";
 
+    const needsGraph =
+        parameters.some(
+            (p) => normalizeType(p.type) === "graph"
+        ) || normalizedReturnType === "graph";
+
     // Generate helper methods
     const { imports: javaImports, helpers: helperMethods } = generateJavaParsers(parameters);
 
-    // Generate structure definitions
+    // Generate structure definitions. Skip defs the user already declared —
+    // a duplicate top-level class fails compilation. userCode is emitted
+    // BEFORE these defs so user `import` statements stay legal (imports must
+    // precede all type declarations in a Java file).
     let structureDefs = "";
 
-    if (needsListNode) {
+    if (needsListNode && !/class\s+ListNode\s*\{/.test(userCode)) {
         structureDefs += linkedList.javaListNodeDef + "\n";
     }
 
-    if (needsTreeNode) {
+    if (needsTreeNode && !/class\s+TreeNode\s*\{/.test(userCode)) {
         structureDefs += tree.javaTreeNodeDef + "\n";
     }
 
@@ -63,6 +72,10 @@ const buildJava = (userCode, problem) => {
 
     if (needsTreeNode) {
         serializers += tree.javaTreeSerializer + "\n";
+    }
+
+    if (needsGraph) {
+        serializers += graph.javaGraphSerializer + "\n";
     }
 
     // Generate input parsing
@@ -85,9 +98,10 @@ const buildJava = (userCode, problem) => {
 import java.util.*;
 import java.io.*;
 ${javaImports}
-${structureDefs}
 
 ${userCode}
+
+${structureDefs}
 
 public class Main {
 

@@ -10,6 +10,7 @@ import {
 import { normalizeType } from "./typeRegistry.js";
 import * as linkedList from "./structures/linkedList.js";
 import * as tree from "./structures/tree.js";
+import * as graph from "./structures/graph.js";
 
 const buildCpp = (userCode, problem) => {
     // Get metadata from problem definition
@@ -40,17 +41,35 @@ const buildCpp = (userCode, problem) => {
             (p) => normalizeType(p.type) === "TreeNode"
         ) || normalizedReturnType === "TreeNode";
 
+    const needsGraph =
+        parameters.some(
+            (p) => normalizeType(p.type) === "graph"
+        ) || normalizedReturnType === "graph";
+
     // Generate helper parsers
     const { includes: cppIncludes, helpers: helperFunctions } = generateCppParsers(parameters);
+
+    // List/tree node parsers live in structures/*.js — generateCppParsers
+    // intentionally skips them (needsListNode/needsTreeNode are hardcoded
+    // false there) so emit them here exactly once.
+    let parsers = "";
+
+    if (needsListNode) {
+        parsers += linkedList.cppListParser + "\n";
+    }
+
+    if (needsTreeNode) {
+        parsers += tree.cppTreeParser + "\n";
+    }
 
     // Generate structure definitions
     let structureDefs = "";
 
-    if (needsListNode) {
+    if (needsListNode && !/struct\s+ListNode\s*\{/.test(userCode)) {
         structureDefs += linkedList.cppListNodeDef + "\n";
     }
 
-    if (needsTreeNode) {
+    if (needsTreeNode && !/struct\s+TreeNode\s*\{/.test(userCode)) {
         structureDefs += tree.cppTreeNodeDef + "\n";
     }
 
@@ -63,6 +82,10 @@ const buildCpp = (userCode, problem) => {
 
     if (needsTreeNode) {
         serializers += tree.cppTreeSerializer + "\n";
+    }
+
+    if (needsGraph) {
+        serializers += graph.cppGraphSerializer + "\n";
     }
 
     // Generate input parsing
@@ -87,6 +110,8 @@ ${cppIncludes}
 using namespace std;
 
 ${structureDefs}
+
+${parsers}
 
 ${helperFunctions}
 

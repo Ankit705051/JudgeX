@@ -1,4 +1,5 @@
 import { normalizeType, isArrayType, is2DArrayType, getLanguageType } from '../typeRegistry.js';
+import { cppGraphParser } from '../structures/graph.js';
 
 
 
@@ -6,27 +7,55 @@ import { normalizeType, isArrayType, is2DArrayType, getLanguageType } from '../t
 const generateCppParsers = (parameters) => {
     let helpers = '';
 
+    const needsVectorVector = parameters.some(p => {
+        const type = normalizeType(p?.type);
+        return is2DArrayType(type) || type === "List<List<Integer>>";
+    });
+
     const needsVectorInt = parameters.some(p => {
         const type = normalizeType(p?.type);
         return type === "int[]" ||
             type === "vector<int>" ||
-            type === "array";
+            type === "array" ||
+            type === "List<Integer>" ||
+            type === "ArrayList<Integer>" ||
+            // parseVectorVectorInt delegates each row to parseVectorInt
+            is2DArrayType(type) ||
+            type === "List<List<Integer>>" ||
+            type === "graph";
     });
 
     const needsVectorString = parameters.some(p => {
         const type = normalizeType(p?.type);
         return type === "string[]" ||
-            type === "vector<string>";
-    });
-
-    const needsVectorVector = parameters.some(p => {
-        return is2DArrayType(normalizeType(p?.type));
+            type === "vector<string>" ||
+            type === "List<String>" ||
+            type === "ArrayList<String>";
     });
 
     // Node parsers are supplied by structures/linkedList.js and tree.js.  Do
     // not emit a second copy here or C++ submissions fail to compile.
     const needsListNode = false;
     const needsTreeNode = false;
+
+    const needsGraph = parameters.some(
+        (p) => normalizeType(p?.type) === "graph"
+    );
+
+    const needsVectorLong = parameters.some((p) => {
+        const type = normalizeType(p?.type);
+        return type === "List<Long>" || type === "long[]";
+    });
+
+    const needsVectorDouble = parameters.some((p) => {
+        const type = normalizeType(p?.type);
+        return type === "List<Double>" || type === "double[]";
+    });
+
+    const needsVectorBool = parameters.some((p) => {
+        const type = normalizeType(p?.type);
+        return type === "List<Boolean>" || type === "bool[]";
+    });
 
     if (needsVectorInt) {
         helpers += `
@@ -52,6 +81,79 @@ const generateCppParsers = (parameters) => {
         return result;
     }
 `;
+    }
+
+    if (needsVectorLong) {
+        helpers += `
+    vector<long long> parseVectorLong(string s) {
+        vector<long long> result;
+        s.erase(remove(s.begin(), s.end(), ' '), s.end());
+        if (s.empty() || s == "[]")
+            return result;
+        if (s.front() == '[' && s.back() == ']')
+            s = s.substr(1, s.size() - 2);
+        if (s.empty())
+            return result;
+        stringstream ss(s);
+        string token;
+        while (getline(ss, token, ',')) {
+            if (token.empty())
+                continue;
+            result.push_back(stoll(token));
+        }
+        return result;
+    }
+`;
+    }
+
+    if (needsVectorDouble) {
+        helpers += `
+    vector<double> parseVectorDouble(string s) {
+        vector<double> result;
+        s.erase(remove(s.begin(), s.end(), ' '), s.end());
+        if (s.empty() || s == "[]")
+            return result;
+        if (s.front() == '[' && s.back() == ']')
+            s = s.substr(1, s.size() - 2);
+        if (s.empty())
+            return result;
+        stringstream ss(s);
+        string token;
+        while (getline(ss, token, ',')) {
+            if (token.empty())
+                continue;
+            result.push_back(stod(token));
+        }
+        return result;
+    }
+`;
+    }
+
+    if (needsVectorBool) {
+        helpers += `
+    vector<bool> parseVectorBool(string s) {
+        vector<bool> result;
+        s.erase(remove(s.begin(), s.end(), ' '), s.end());
+        if (s.empty() || s == "[]")
+            return result;
+        if (s.front() == '[' && s.back() == ']')
+            s = s.substr(1, s.size() - 2);
+        if (s.empty())
+            return result;
+        stringstream ss(s);
+        string token;
+        while (getline(ss, token, ',')) {
+            if (token.empty())
+                continue;
+            result.push_back(token == "true" || token == "1");
+        }
+        return result;
+    }
+`;
+    }
+
+    if (needsGraph) {
+        helpers += cppGraphParser + "\n";
     }
 
     if (needsVectorString) {
@@ -236,22 +338,28 @@ TreeNode* parseTree(string s) {
 `;
     }
 
-    return helpers;
+    return { includes: "", helpers };
 };
 
-// Generate Java parser helper methods
+// Generate Java parser helper methods.
+// Array/List/graph params are parsed with Gson (already built into gson.jar
+// on the classpath) via TypeToken — hand-rolled parsers could not handle
+// nested generics, escapes, or null elements correctly.
 const generateJavaParsers = (parameters) => {
-    let helpers = '';
+    const imports = `
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+`;
 
-    const needsIntArray = parameters.some(p => {
-        const type = normalizeType(p?.type);
-        return type === 'int[]' || type === 'array';
-    });
+    let helpers = `
+    private static final Gson GSON = new Gson();
 
-    const needsStringArray = parameters.some(p => normalizeType(p?.type) === 'string[]');
-    const needs2DArray = parameters.some(p => is2DArrayType(p?.type));
+    private static <T> T parseJson(String s, java.lang.reflect.Type type) {
+        return GSON.fromJson(s, type);
+    }
+`;
 
-    const needsListNode = parameters.some(p => {
+    const needsListNode = parameters.some((p) => {
         const type = normalizeType(p?.type);
         return type === 'listnode' || type === 'ListNode';
     });
@@ -260,137 +368,6 @@ const generateJavaParsers = (parameters) => {
         const type = normalizeType(p?.type);
         return type === 'treenode' || type === 'TreeNode';
     });
-
-    if (needsIntArray) {
-        helpers += `
- private static int[] parseVectorInt(String s) {
-    s = s.trim();
-
-    if (s.isEmpty() || s.equals("[]"))
-        return new int[0];
-
-    if (s.startsWith("[") && s.endsWith("]"))
-        s = s.substring(1, s.length() - 1);
-
-    if (s.trim().isEmpty())
-        return new int[0];
-
-    String[] tokens = s.split(",");
-    List<Integer> values = new ArrayList<>();
-
-    for (String token : tokens) {
-        token = token.trim();
-
-        if (token.isEmpty())
-            continue;
-
-        values.add(Integer.parseInt(token));
-    }
-
-    int[] result = new int[values.size()];
-
-    for (int i = 0; i < values.size(); i++)
-        result[i] = values.get(i);
-
-    return result;
-}
-`;
-    }
-
-    if (needsStringArray) {
-        helpers += `
-    private static String[] parseVectorString(String s) {
-        s = s.trim();
-
-        if (s.isEmpty() || s.equals("[]"))
-            return new String[0];
-
-        if (s.startsWith("[") && s.endsWith("]"))
-            s = s.substring(1, s.length() - 1);
-
-        List<String> result = new ArrayList<>();
-
-        StringBuilder current = new StringBuilder();
-        boolean inQuotes = false;
-        boolean escaped = false;
-
-        for (char c : s.toCharArray()) {
-
-            if (escaped) {
-                current.append(c);
-                escaped = false;
-                continue;
-            }
-
-            if (c == '\\\\') {
-                escaped = true;
-                continue;
-            }
-
-            if (c == '"') {
-                inQuotes = !inQuotes;
-                continue;
-            }
-
-            if (c == ',' && !inQuotes) {
-                result.add(current.toString());
-                current.setLength(0);
-                continue;
-            }
-
-            current.append(c);
-        }
-
-        if (current.length() > 0)
-            result.add(current.toString());
-
-        return result.toArray(new String[0]);
-    }
-`;
-    }
-
-    if (needs2DArray) {
-        helpers += `
- private static int[][] parseVectorVectorInt(String s) {
-
-    s = s.trim().replaceAll(" ", "");
-
-    if (s.isEmpty() || s.equals("[]"))
-        return new int[0][];
-
-    if (s.startsWith("[") && s.endsWith("]"))
-        s = s.substring(1, s.length() - 1);
-
-    List<int[]> result = new ArrayList<>();
-
-    StringBuilder current = new StringBuilder();
-    int depth = 0;
-
-    for (char c : s.toCharArray()) {
-
-        if (c == '[')
-            depth++;
-
-        if (depth > 0)
-            current.append(c);
-
-        if (c == ']') {
-
-            depth--;
-
-            if (depth == 0) {
-
-                result.add(parseVectorInt(current.toString()));
-                current.setLength(0);
-
-            }
-        }
-    }
-
-    return result.toArray(new int[0][]);
-}
-`;
-    }
 
     if (needsListNode) {
         helpers += `
@@ -453,7 +430,7 @@ const generateJavaParsers = (parameters) => {
 `;
     }
 
-    return helpers;
+    return { imports, helpers };
 };
 
 // Generate C++ input reading code
@@ -487,9 +464,51 @@ const generateCppInputReading = (parameters) => {
                 break;
 
             case "int[][]":
+            case "List<List<Integer>>":
+            case "graph":
                 inputReading += `    string line${index};
     if (!getline(cin, line${index})) return 0;
-    vector<vector<int>> ${varName} = parseVectorVectorInt(line${index});
+    vector<vector<int>> ${varName} = ${type === "graph" ? "parseGraph" : "parseVectorVectorInt"}(line${index});
+`;
+                break;
+
+            case "List<Integer>":
+            case "ArrayList<Integer>":
+                inputReading += `    string line${index};
+    if (!getline(cin, line${index})) return 0;
+    vector<int> ${varName} = parseVectorInt(line${index});
+`;
+                break;
+
+            case "List<String>":
+            case "ArrayList<String>":
+                inputReading += `    string line${index};
+    if (!getline(cin, line${index})) return 0;
+    vector<string> ${varName} = parseVectorString(line${index});
+`;
+                break;
+
+            case "long[]":
+            case "List<Long>":
+                inputReading += `    string line${index};
+    if (!getline(cin, line${index})) return 0;
+    vector<long long> ${varName} = parseVectorLong(line${index});
+`;
+                break;
+
+            case "double[]":
+            case "List<Double>":
+                inputReading += `    string line${index};
+    if (!getline(cin, line${index})) return 0;
+    vector<double> ${varName} = parseVectorDouble(line${index});
+`;
+                break;
+
+            case "bool[]":
+            case "List<Boolean>":
+                inputReading += `    string line${index};
+    if (!getline(cin, line${index})) return 0;
+    vector<bool> ${varName} = parseVectorBool(line${index});
 `;
                 break;
 
@@ -555,7 +574,29 @@ const generateCppInputReading = (parameters) => {
     };
 };
 
-// Generate Java input reading code
+// Generate Java input reading code.
+// JSON-shaped params (arrays, Lists, graphs) go through Gson + TypeToken so
+// nested generics, quoted strings and nulls are handled correctly.
+const JAVA_JSON_TYPES = {
+    "int[]": ["int[]", "int[].class"],
+    "array": ["int[]", "int[].class"],
+    "long[]": ["long[]", "long[].class"],
+    "double[]": ["double[]", "double[].class"],
+    "bool[]": ["boolean[]", "boolean[].class"],
+    "string[]": ["String[]", "String[].class"],
+    "int[][]": ["int[][]", "int[][].class"],
+    "string[][]": ["String[][]", "String[][].class"],
+    "List<Integer>": ["List<Integer>", "new TypeToken<List<Integer>>(){}.getType()"],
+    "ArrayList<Integer>": ["ArrayList<Integer>", "new TypeToken<ArrayList<Integer>>(){}.getType()"],
+    "List<Long>": ["List<Long>", "new TypeToken<List<Long>>(){}.getType()"],
+    "List<Double>": ["List<Double>", "new TypeToken<List<Double>>(){}.getType()"],
+    "List<Boolean>": ["List<Boolean>", "new TypeToken<List<Boolean>>(){}.getType()"],
+    "List<String>": ["List<String>", "new TypeToken<List<String>>(){}.getType()"],
+    "ArrayList<String>": ["ArrayList<String>", "new TypeToken<ArrayList<String>>(){}.getType()"],
+    "List<List<Integer>>": ["List<List<Integer>>", "new TypeToken<List<List<Integer>>>(){}.getType()"],
+    "graph": ["List<List<Integer>>", "new TypeToken<List<List<Integer>>>(){}.getType()"],
+};
+
 const generateJavaInputReading = (parameters) => {
     let inputReading = "";
     const paramNames = [];
@@ -567,23 +608,14 @@ const generateJavaInputReading = (parameters) => {
 
         const type = normalizeType(param.type);
 
+        if (JAVA_JSON_TYPES[type]) {
+            const [declType, gsonType] = JAVA_JSON_TYPES[type];
+            inputReading += `        ${declType} ${varName} = parseJson(sc.nextLine(), ${gsonType});
+`;
+            return;
+        }
+
         switch (type) {
-
-            case "int[]":
-            case "array":
-                inputReading += `        int[] ${varName} = parseVectorInt(sc.nextLine());
-`;
-                break;
-
-            case "string[]":
-                inputReading += `        String[] ${varName} = parseVectorString(sc.nextLine());
-`;
-                break;
-
-            case "int[][]":
-                inputReading += `        int[][] ${varName} = parseVectorVectorInt(sc.nextLine());
-`;
-                break;
 
             case "ListNode":
             case "listnode":
@@ -613,7 +645,6 @@ const generateJavaInputReading = (parameters) => {
                 break;
 
             case "double":
-            case "float":
                 inputReading += `        double ${varName} = Double.parseDouble(sc.nextLine().trim());
 `;
                 break;
@@ -647,9 +678,22 @@ const generatePythonInputParsing = (parameters) => {
         switch (type) {
 
             case "int[]":
+            case "long[]":
+            case "double[]":
+            case "bool[]":
             case "string[]":
+            case "string[][]":
             case "int[][]":
             case "array":
+            case "List<Integer>":
+            case "List<Long>":
+            case "List<Double>":
+            case "List<Boolean>":
+            case "List<String>":
+            case "List<List<Integer>>":
+            case "ArrayList<Integer>":
+            case "ArrayList<String>":
+            case "graph":
                 parsingCode += `    ${varName} = json.loads(inputLines[${index}].strip())\n`;
                 break;
 
@@ -706,9 +750,22 @@ const generateJavascriptInputParsing = (parameters) => {
         switch (type) {
 
             case "int[]":
+            case "long[]":
+            case "double[]":
+            case "bool[]":
             case "string[]":
+            case "string[][]":
             case "int[][]":
             case "array":
+            case "List<Integer>":
+            case "List<Long>":
+            case "List<Double>":
+            case "List<Boolean>":
+            case "List<String>":
+            case "List<List<Integer>>":
+            case "ArrayList<Integer>":
+            case "ArrayList<String>":
+            case "graph":
                 parsingCode += `    const ${varName} = JSON.parse(inputLines[${index}].trim());\n`;
                 break;
 

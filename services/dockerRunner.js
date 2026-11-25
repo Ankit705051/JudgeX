@@ -74,6 +74,23 @@ async function copyVendorFiles(jobDir) {
     const gsonSourceDest = path.join(jobDir, "com", "google", "gson", "Gson.java");
     await fs.mkdir(path.dirname(gsonSourceDest), { recursive: true });
     await fs.copyFile(gsonSourceSrc, gsonSourceDest);
+
+    const typeTokenSrc = path.join(
+        process.cwd(),
+        "services",
+        "codeBuilder",
+        "vendor",
+        "gson",
+        "src",
+        "com",
+        "google",
+        "gson",
+        "reflect",
+        "TypeToken.java"
+    );
+    const typeTokenDest = path.join(jobDir, "com", "google", "gson", "reflect", "TypeToken.java");
+    await fs.mkdir(path.dirname(typeTokenDest), { recursive: true });
+    await fs.copyFile(typeTokenSrc, typeTokenDest);
 }
 
 function dockerRunCmd(runner, jobDir, shellCmd) {
@@ -136,7 +153,7 @@ export const prepareSubmission = async (code, languageId) => {
                 break;
             case "java":
                 compileCmd =
-                    `timeout ${COMPILE_TIMEOUT_S}s javac -d gson_build com/google/gson/Gson.java` +
+                    `timeout ${COMPILE_TIMEOUT_S}s javac -d gson_build com/google/gson/Gson.java com/google/gson/reflect/TypeToken.java` +
                     ` && timeout ${COMPILE_TIMEOUT_S}s jar cf gson.jar -C gson_build .` +
                     ` && timeout ${COMPILE_TIMEOUT_S}s javac -cp gson.jar ${filename}`;
                 break;
