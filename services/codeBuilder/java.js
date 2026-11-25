@@ -10,27 +10,8 @@ import {
 import { normalizeType } from "./typeRegistry.js";
 import * as linkedList from "./structures/linkedList.js";
 import * as tree from "./structures/tree.js";
-import * as graph from "./structures/graph.js";
 
 const buildJava = (userCode, problem) => {
-    const userImportLines = [];
-    const userCodeBody = userCode
-        .split("\n")
-        .filter((line) => {
-            const trimmedLine = line.trim();
-
-            if (
-                trimmedLine.startsWith("import ") ||
-                trimmedLine.startsWith("package ")
-            ) {
-                userImportLines.push(trimmedLine);
-                return false;
-            }
-
-            return true;
-        })
-        .join("\n");
-
     // Get metadata from problem definition
     const returnType = extractReturnType(
         userCode,
@@ -47,26 +28,20 @@ const buildJava = (userCode, problem) => {
     );
 
     const normalizedReturnType = normalizeType(returnType);
-    const resolvedParameters = Array.isArray(parameters) ? parameters : [];
 
     // Determine required structures
     const needsListNode =
-        resolvedParameters.some(
+        parameters.some(
             (p) => normalizeType(p.type) === "ListNode"
         ) || normalizedReturnType === "ListNode";
 
     const needsTreeNode =
-        resolvedParameters.some(
+        parameters.some(
             (p) => normalizeType(p.type) === "TreeNode"
         ) || normalizedReturnType === "TreeNode";
 
-    const needsGraph =
-        resolvedParameters.some(
-            (p) => normalizeType(p.type) === "graph"
-        ) || normalizedReturnType === "graph";
-
     // Generate helper methods
-    const { imports: javaImports, helpers: helperMethods } = generateJavaParsers(resolvedParameters);
+    const { imports: javaImports, helpers: helperMethods } = generateJavaParsers(parameters);
 
     // Generate structure definitions
     let structureDefs = "";
@@ -90,13 +65,9 @@ const buildJava = (userCode, problem) => {
         serializers += tree.javaTreeSerializer + "\n";
     }
 
-    if (needsGraph) {
-        serializers += graph.javaGraphSerializer + "\n";
-    }
-
     // Generate input parsing
     const { inputReading, paramNames } =
-        generateJavaInputReading(resolvedParameters);
+        generateJavaInputReading(parameters);
 
     // Generate function invocation
     const callCode = generateFunctionCall(
@@ -113,11 +84,10 @@ const buildJava = (userCode, problem) => {
     return `
 import java.util.*;
 import java.io.*;
-${userImportLines.join("\n")}
 ${javaImports}
 ${structureDefs}
 
-${userCodeBody}
+${userCode}
 
 public class Main {
 

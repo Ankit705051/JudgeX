@@ -3,7 +3,7 @@ import { Problem } from "../schema/problem.js";
 import { TestCase } from "../schema/testcase.js";
 import { compareOutputs } from "./outputComprator.js";
 import { buildCode } from "./codeBuilder/index.js";
-import { executeCode } from "./dockerRunner.js";
+import { prepareSubmission, runCompiled } from "./dockerRunner.js";
 import { getLanguageId } from "./languageMap.js";
 import { updateContestScore } from "./contestScore.js";
 import { redis } from "../config/redis.js";
@@ -82,6 +82,35 @@ export const judgeSubmission = async (
             getLanguageId(
                 submission.language
             );
+
+        // Compile once per submission. Previously every testcase recompiled
+        // (including nlohmann/json.hpp for C++ and Gson for Java), which
+        // routinely exceeded the old 10s compile timeout -> false TLE.
+        const prepared = await prepareSubmission(
+            fullCode,
+            languageId
+        );
+
+        if (!prepared.ok) {
+            if (prepared.status?.id === 6) {
+                submission.status = "compile_error";
+                submission.compileOutput =
+                    prepared.compileOutput || "";
+            } else if (prepared.status?.id === 5) {
+                submission.status = "time_limit_exceeded";
+            } else {
+                submission.status = "runtime_error";
+                submission.errorOutput =
+                    prepared.message || "Execution failed";
+            }
+            await submission.save();
+            await publishSubmissionUpdate(submission);
+            await prepared.cleanup?.();
+            return submission;
+        }
+
+        const execJob = prepared.job;
+
         let passed = 0;
         let finalOutput = "";
         let executionTime = 0;
@@ -98,9 +127,8 @@ export const judgeSubmission = async (
                 `Running testcase ${index + 1}`
             );
             const result =
-                await executeCode(
-                    fullCode,
-                    languageId,
+                await runCompiled(
+                    execJob,
                     testCase.input
                 );
             const statusId =
@@ -130,6 +158,7 @@ export const judgeSubmission = async (
                     )
             };
         };
+        try {
         for(
             let i = 0;
             i < testCases.length;
@@ -228,6 +257,9 @@ export const judgeSubmission = async (
                         )
                     );
             }
+        }
+        } finally {
+            await execJob.cleanup();
         }
         submission.passedTestCases =
             passed;

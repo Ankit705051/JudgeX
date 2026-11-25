@@ -1,198 +1,255 @@
 import { normalizeType, isArrayType, is2DArrayType, getLanguageType } from '../typeRegistry.js';
-import * as linkedList from "../structures/linkedList.js";
-import * as tree from "../structures/tree.js";
 
+
+
+// Generate C++ parser helper functions
 const generateCppParsers = (parameters) => {
     let helpers = '';
-    let includes = '';
 
-    const needsListNode = parameters.some(p => {
+    const needsVectorInt = parameters.some(p => {
         const type = normalizeType(p?.type);
-        return type === "ListNode" || type === "listnode";
-    });
-    const needsTreeNode = parameters.some(p => {
-        const type = normalizeType(p?.type);
-        return type === "TreeNode" || type === "treenode";
+        return type === "int[]" ||
+            type === "vector<int>" ||
+            type === "array";
     });
 
-    // Standard helpers (always include standard built-in parsers for completeness)
-    helpers += `
-string parseString(string s) {
-    s.erase(0, s.find_first_not_of(" \\t\\r\\n"));
-    s.erase(s.find_last_not_of(" \\t\\r\\n") + 1);
-    if (s.size() >= 2 && s.front() == '"' && s.back() == '"') {
-        return s.substr(1, s.size() - 2);
-    }
-    return s;
-}
+    const needsVectorString = parameters.some(p => {
+        const type = normalizeType(p?.type);
+        return type === "string[]" ||
+            type === "vector<string>";
+    });
 
-vector<int> parseIntArray(string s) {
-    vector<int> res;
-    s.erase(0, s.find_first_not_of(" \\t\\r\\n"));
-    s.erase(s.find_last_not_of(" \\t\\r\\n") + 1);
-    if (s.empty() || s == "[]") return res;
-    if (s.front() == '[') s = s.substr(1);
-    if (s.back() == ']') s = s.substr(0, s.size() - 1);
-    stringstream ss(s);
-    string token;
-    while (getline(ss, token, ',')) {
-        token.erase(0, token.find_first_not_of(" \\t\\r\\n"));
-        token.erase(token.find_last_not_of(" \\t\\r\\n") + 1);
-        if (!token.empty()) res.push_back(stoi(token));
-    }
-    return res;
-}
+    const needsVectorVector = parameters.some(p => {
+        return is2DArrayType(normalizeType(p?.type));
+    });
 
-vector<long long> parseLongArray(string s) {
-    vector<long long> res;
-    s.erase(0, s.find_first_not_of(" \\t\\r\\n"));
-    s.erase(s.find_last_not_of(" \\t\\r\\n") + 1);
-    if (s.empty() || s == "[]") return res;
-    if (s.front() == '[') s = s.substr(1);
-    if (s.back() == ']') s = s.substr(0, s.size() - 1);
-    stringstream ss(s);
-    string token;
-    while (getline(ss, token, ',')) {
-        token.erase(0, token.find_first_not_of(" \\t\\r\\n"));
-        token.erase(token.find_last_not_of(" \\t\\r\\n") + 1);
-        if (!token.empty()) res.push_back(stoll(token));
-    }
-    return res;
-}
+    // Node parsers are supplied by structures/linkedList.js and tree.js.  Do
+    // not emit a second copy here or C++ submissions fail to compile.
+    const needsListNode = false;
+    const needsTreeNode = false;
 
-vector<double> parseDoubleArray(string s) {
-    vector<double> res;
-    s.erase(0, s.find_first_not_of(" \\t\\r\\n"));
-    s.erase(s.find_last_not_of(" \\t\\r\\n") + 1);
-    if (s.empty() || s == "[]") return res;
-    if (s.front() == '[') s = s.substr(1);
-    if (s.back() == ']') s = s.substr(0, s.size() - 1);
-    stringstream ss(s);
-    string token;
-    while (getline(ss, token, ',')) {
-        token.erase(0, token.find_first_not_of(" \\t\\r\\n"));
-        token.erase(token.find_last_not_of(" \\t\\r\\n") + 1);
-        if (!token.empty()) res.push_back(stod(token));
-    }
-    return res;
-}
+    if (needsVectorInt) {
+        helpers += `
+    vector<int> parseVectorInt(string s) {
+        vector<int> result;
+        s.erase(remove(s.begin(), s.end(), ' '), s.end());
+        if (s.empty() || s == "[]")
+            return result;
+        if (s.front() == '[' && s.back() == ']')
+            s = s.substr(1, s.size() - 2);
+        if (s.empty())
+            return result;
+        stringstream ss(s);
+        string token;
 
-vector<bool> parseBoolArray(string s) {
-    vector<bool> res;
-    s.erase(0, s.find_first_not_of(" \\t\\r\\n"));
-    s.erase(s.find_last_not_of(" \\t\\r\\n") + 1);
-    if (s.empty() || s == "[]") return res;
-    if (s.front() == '[') s = s.substr(1);
-    if (s.back() == ']') s = s.substr(0, s.size() - 1);
-    stringstream ss(s);
-    string token;
-    while (getline(ss, token, ',')) {
-        token.erase(0, token.find_first_not_of(" \\t\\r\\n"));
-        token.erase(token.find_last_not_of(" \\t\\r\\n") + 1);
-        transform(token.begin(), token.end(), token.begin(), ::tolower);
-        res.push_back(token == "true");
-    }
-    return res;
-}
+        while (getline(ss, token, ',')) {
+            if (token.empty())
+                continue;
 
-vector<string> parseStringArray(string s) {
-    vector<string> res;
-    s.erase(0, s.find_first_not_of(" \\t\\r\\n"));
-    s.erase(s.find_last_not_of(" \\t\\r\\n") + 1);
-    if (s.empty() || s == "[]") return res;
-    if (s.front() == '[') s = s.substr(1);
-    if (s.back() == ']') s = s.substr(0, s.size() - 1);
-    bool inQuotes = false;
-    string current = "";
-    for (size_t i = 0; i < s.size(); i++) {
-        char c = s[i];
-        if (c == '"') {
-            inQuotes = !inQuotes;
-        } else if (c == ',' && !inQuotes) {
-            res.push_back(parseString(current));
+            result.push_back(stoi(token));
+        }
+
+        return result;
+    }
+`;
+    }
+
+    if (needsVectorString) {
+        helpers += `
+    vector<string> parseVectorString(string s) {
+        vector<string> result;
+
+        if (s.empty() || s == "[]")
+            return result;
+
+        if (s.size() >= 2 && s.front() == '[' && s.back() == ']')
+            s = s.substr(1, s.size() - 2);
+
+        string current;
+        bool inQuotes = false;
+        bool escaped = false;
+
+        for (char c : s) {
+            if (escaped) {
+                current += c;
+                escaped = false;
+                continue;
+            }
+
+            if (c == '\\\\') {
+                escaped = true;
+                continue;
+            }
+            if (c == '\\n') {
+                current += '\\n';
+                escaped = false;
+                continue;
+            }
+            if (c == '"') {
+                inQuotes = !inQuotes;
+                continue;
+            }
+
+            if (!inQuotes && isspace(static_cast<unsigned char>(c))) {
+                continue;
+            }
+
+            if (c == ',' && !inQuotes) {
+                result.push_back(current);
+                current.clear();
+                continue;
+            }
+
+            current += c;
+        }
+
+        if (!current.empty())
+            result.push_back(current);
+
+        return result;
+    }
+`;
+    }
+
+    if (needsVectorVector) {
+        helpers += `
+    vector<vector<int>> parseVectorVectorInt(string s) {
+        vector<vector<int>> result;
+
+        if (s.empty() || s == "[]")
+            return result;
+
+        s.erase(remove(s.begin(), s.end(), ' '), s.end());
+
+        if (s.size() >= 2 && s.front() == '[' && s.back() == ']')
+            s = s.substr(1, s.size() - 2);
+
+        string current;
+        int depth = 0;
+
+        for (char c : s) {
+            if (c == '[') {
+                depth++;
+            }
+
+            if (depth > 0)
+                current += c;
+
+            if (c == ']') {
+                depth--;
+
+                if (depth == 0) {
+                    result.push_back(parseVectorInt(current));
+                    current.clear();
+                }
+            }
+        }
+
+        return result;
+    }
+`;
+    }
+
+    if (needsListNode) {
+        helpers += `
+ListNode* parseList(string s) {
+    if (s.empty() || s == "[]") return nullptr;
+    s.erase(remove(s.begin(), s.end(), ' '), s.end());
+    if (s[0] == '[') s = s.substr(1, s.length() - 1);
+
+    vector<string> nodes;
+    string current;
+    for (char c : s) {
+        if (c == ',') {
+            nodes.push_back(current);
             current = "";
         } else {
             current += c;
         }
     }
-    res.push_back(parseString(current));
-    return res;
-}
+    if (!current.empty()) nodes.push_back(current);
 
-vector<vector<int>> parseIntMatrix(string s) {
-    vector<vector<int>> res;
-    s.erase(0, s.find_first_not_of(" \\t\\r\\n"));
-    s.erase(s.find_last_not_of(" \\t\\r\\n") + 1);
-    if (s.empty() || s == "[]" || s == "[[]]") return res;
-    if (s.front() == '[') s = s.substr(1);
-    if (s.back() == ']') s = s.substr(0, s.size() - 1);
-    int depth = 0;
-    string current = "";
-    for (size_t i = 0; i < s.size(); i++) {
-        char c = s[i];
-        if (c == '[') {
-            depth++;
-            current += c;
-        } else if (c == ']') {
-            depth--;
-            current += c;
-            if (depth == 0) {
-                res.push_back(parseIntArray(current));
-                current = "";
-            }
-        } else {
-            if (depth > 0) current += c;
+    if (nodes.empty()) return nullptr;
+
+    ListNode* dummy = new ListNode(0);
+    ListNode* current = dummy;
+
+    for (const string& nodeStr : nodes) {
+        if (nodeStr != "null") {
+            current->next = new ListNode(stoi(nodeStr));
+            current = current->next;
         }
     }
-    return res;
-}
 
-vector<vector<string>> parseStringMatrix(string s) {
-    vector<vector<string>> res;
-    s.erase(0, s.find_first_not_of(" \\t\\r\\n"));
-    s.erase(s.find_last_not_of(" \\t\\r\\n") + 1);
-    if (s.empty() || s == "[]" || s == "[[]]") return res;
-    if (s.front() == '[') s = s.substr(1);
-    if (s.back() == ']') s = s.substr(0, s.size() - 1);
-    int depth = 0;
-    string current = "";
-    for (size_t i = 0; i < s.size(); i++) {
-        char c = s[i];
-        if (c == '[') {
-            depth++;
-            current += c;
-        } else if (c == ']') {
-            depth--;
-            current += c;
-            if (depth == 0) {
-                res.push_back(parseStringArray(current));
-                current = "";
-            }
-        } else {
-            if (depth > 0) current += c;
-        }
-    }
-    return res;
+    ListNode* head = dummy->next;
+    delete dummy;
+    return head;
 }
 `;
-
-    if (needsListNode) {
-        helpers += linkedList.cppListParser + "\n";
     }
 
     if (needsTreeNode) {
-        helpers += tree.cppTreeParser + "\n";
+        helpers += `
+TreeNode* parseTree(string s) {
+    if (s.empty() || s == "[]") return nullptr;
+    s.erase(remove(s.begin(), s.end(), ' '), s.end());
+    if (s[0] == '[') s = s.substr(1, s.length() - 1);
+
+    vector<string> nodes;
+    string current;
+    for (char c : s) {
+        if (c == ',') {
+            nodes.push_back(current);
+            current = "";
+        } else {
+            current += c;
+        }
+    }
+    if (!current.empty()) nodes.push_back(current);
+
+    if (nodes.empty() || nodes[0] == "null") return nullptr;
+
+    TreeNode* root = new TreeNode(stoi(nodes[0]));
+    queue<TreeNode*> q;
+    q.push(root);
+
+    int i = 1;
+    while (!q.empty() && i < nodes.size()) {
+        TreeNode* node = q.front();
+        q.pop();
+
+        if (i < nodes.size() && nodes[i] != "null") {
+            node->left = new TreeNode(stoi(nodes[i]));
+            q.push(node->left);
+        }
+        i++;
+
+        if (i < nodes.size() && nodes[i] != "null") {
+            node->right = new TreeNode(stoi(nodes[i]));
+            q.push(node->right);
+        }
+        i++;
     }
 
-    return {
-        includes,
-        helpers,
-    };
+    return root;
+}
+`;
+    }
+
+    return helpers;
 };
 
+// Generate Java parser helper methods
 const generateJavaParsers = (parameters) => {
     let helpers = '';
-    let imports = '';
+
+    const needsIntArray = parameters.some(p => {
+        const type = normalizeType(p?.type);
+        return type === 'int[]' || type === 'array';
+    });
+
+    const needsStringArray = parameters.some(p => normalizeType(p?.type) === 'string[]');
+    const needs2DArray = parameters.some(p => is2DArrayType(p?.type));
 
     const needsListNode = parameters.some(p => {
         const type = normalizeType(p?.type);
@@ -204,199 +261,136 @@ const generateJavaParsers = (parameters) => {
         return type === 'treenode' || type === 'TreeNode';
     });
 
-    // Standard Java helpers without using Gson
-    helpers += `
-    private static String parseString(String s) {
-        if (s == null) return "";
-        s = s.trim();
-        if (s.startsWith("\\"") && s.endsWith("\\"") && s.length() >= 2) {
-            return s.substring(1, s.length() - 1);
-        }
-        return s;
+    if (needsIntArray) {
+        helpers += `
+ private static int[] parseVectorInt(String s) {
+    s = s.trim();
+
+    if (s.isEmpty() || s.equals("[]"))
+        return new int[0];
+
+    if (s.startsWith("[") && s.endsWith("]"))
+        s = s.substring(1, s.length() - 1);
+
+    if (s.trim().isEmpty())
+        return new int[0];
+
+    String[] tokens = s.split(",");
+    List<Integer> values = new ArrayList<>();
+
+    for (String token : tokens) {
+        token = token.trim();
+
+        if (token.isEmpty())
+            continue;
+
+        values.add(Integer.parseInt(token));
     }
 
-    private static int[] parseIntArray(String s) {
-        if (s == null || s.trim().isEmpty() || s.trim().equals("[]")) return new int[0];
-        s = s.trim();
-        if (s.startsWith("[")) s = s.substring(1);
-        if (s.endsWith("]")) s = s.substring(0, s.length() - 1);
-        if (s.trim().isEmpty()) return new int[0];
-        String[] parts = s.split(",");
-        int[] res = new int[parts.length];
-        for (int i = 0; i < parts.length; i++) {
-            res[i] = Integer.parseInt(parts[i].trim());
-        }
-        return res;
+    int[] result = new int[values.size()];
+
+    for (int i = 0; i < values.size(); i++)
+        result[i] = values.get(i);
+
+    return result;
+}
+`;
     }
 
-    private static long[] parseLongArray(String s) {
-        if (s == null || s.trim().isEmpty() || s.trim().equals("[]")) return new long[0];
+    if (needsStringArray) {
+        helpers += `
+    private static String[] parseVectorString(String s) {
         s = s.trim();
-        if (s.startsWith("[")) s = s.substring(1);
-        if (s.endsWith("]")) s = s.substring(0, s.length() - 1);
-        if (s.trim().isEmpty()) return new long[0];
-        String[] parts = s.split(",");
-        long[] res = new long[parts.length];
-        for (int i = 0; i < parts.length; i++) {
-            res[i] = Long.parseLong(parts[i].trim());
-        }
-        return res;
-    }
 
-    private static double[] parseDoubleArray(String s) {
-        if (s == null || s.trim().isEmpty() || s.trim().equals("[]")) return new double[0];
-        s = s.trim();
-        if (s.startsWith("[")) s = s.substring(1);
-        if (s.endsWith("]")) s = s.substring(0, s.length() - 1);
-        if (s.trim().isEmpty()) return new double[0];
-        String[] parts = s.split(",");
-        double[] res = new double[parts.length];
-        for (int i = 0; i < parts.length; i++) {
-            res[i] = Double.parseDouble(parts[i].trim());
-        }
-        return res;
-    }
+        if (s.isEmpty() || s.equals("[]"))
+            return new String[0];
 
-    private static boolean[] parseBoolArray(String s) {
-        if (s == null || s.trim().isEmpty() || s.trim().equals("[]")) return new boolean[0];
-        s = s.trim();
-        if (s.startsWith("[")) s = s.substring(1);
-        if (s.endsWith("]")) s = s.substring(0, s.length() - 1);
-        if (s.trim().isEmpty()) return new boolean[0];
-        String[] parts = s.split(",");
-        boolean[] res = new boolean[parts.length];
-        for (int i = 0; i < parts.length; i++) {
-            res[i] = Boolean.parseBoolean(parts[i].trim());
-        }
-        return res;
-    }
+        if (s.startsWith("[") && s.endsWith("]"))
+            s = s.substring(1, s.length() - 1);
 
-    private static String[] parseStringArray(String s) {
-        if (s == null || s.trim().isEmpty() || s.trim().equals("[]")) return new String[0];
-        s = s.trim();
-        if (s.startsWith("[")) s = s.substring(1);
-        if (s.endsWith("]")) s = s.substring(0, s.length() - 1);
-        if (s.trim().isEmpty()) return new String[0];
-        List<String> list = new ArrayList<>();
-        boolean inQuotes = false;
+        List<String> result = new ArrayList<>();
+
         StringBuilder current = new StringBuilder();
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
+        boolean inQuotes = false;
+        boolean escaped = false;
+
+        for (char c : s.toCharArray()) {
+
+            if (escaped) {
+                current.append(c);
+                escaped = false;
+                continue;
+            }
+
+            if (c == '\\\\') {
+                escaped = true;
+                continue;
+            }
+
             if (c == '"') {
                 inQuotes = !inQuotes;
-            } else if (c == ',' && !inQuotes) {
-                list.add(current.toString());
+                continue;
+            }
+
+            if (c == ',' && !inQuotes) {
+                result.add(current.toString());
                 current.setLength(0);
-            } else {
-                current.append(c);
+                continue;
             }
+
+            current.append(c);
         }
-        list.add(current.toString());
-        String[] res = new String[list.size()];
-        for (int i = 0; i < list.size(); i++) {
-            res[i] = parseString(list.get(i));
-        }
-        return res;
-    }
 
-    private static List<Integer> parseIntegerList(String s) {
-        List<Integer> list = new ArrayList<>();
-        for (int val : parseIntArray(s)) list.add(val);
-        return list;
-    }
+        if (current.length() > 0)
+            result.add(current.toString());
 
-    private static List<Long> parseLongList(String s) {
-        List<Long> list = new ArrayList<>();
-        for (long val : parseLongArray(s)) list.add(val);
-        return list;
-    }
-
-    private static List<Double> parseDoubleList(String s) {
-        List<Double> list = new ArrayList<>();
-        for (double val : parseDoubleArray(s)) list.add(val);
-        return list;
-    }
-
-    private static List<Boolean> parseBooleanList(String s) {
-        List<Boolean> list = new ArrayList<>();
-        for (boolean val : parseBoolArray(s)) list.add(val);
-        return list;
-    }
-
-    private static List<String> parseStringList(String s) {
-        List<String> list = new ArrayList<>();
-        for (String val : parseStringArray(s)) list.add(val);
-        return list;
-    }
-
-    private static int[][] parseIntMatrix(String s) {
-        if (s == null || s.trim().isEmpty() || s.trim().equals("[]") || s.trim().equals("[[]]")) return new int[0][0];
-        s = s.trim();
-        if (s.startsWith("[")) s = s.substring(1);
-        if (s.endsWith("]")) s = s.substring(0, s.length() - 1);
-        List<int[]> matrix = new ArrayList<>();
-        int depth = 0;
-        StringBuilder current = new StringBuilder();
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (c == '[') {
-                depth++;
-                current.append(c);
-            } else if (c == ']') {
-                depth--;
-                current.append(c);
-                if (depth == 0) {
-                    matrix.add(parseIntArray(current.toString()));
-                    current.setLength(0);
-                }
-            } else {
-                if (depth > 0) {
-                    current.append(c);
-                }
-            }
-        }
-        return matrix.toArray(new int[0][]);
-    }
-
-    private static List<List<Integer>> parseIntegerMatrixList(String s) {
-        List<List<Integer>> matrix = new ArrayList<>();
-        for (int[] row : parseIntMatrix(s)) {
-            List<Integer> r = new ArrayList<>();
-            for (int v : row) r.add(v);
-            matrix.add(r);
-        }
-        return matrix;
-    }
-
-    private static String[][] parseStringMatrix(String s) {
-        if (s == null || s.trim().isEmpty() || s.trim().equals("[]") || s.trim().equals("[[]]")) return new String[0][0];
-        s = s.trim();
-        if (s.startsWith("[")) s = s.substring(1);
-        if (s.endsWith("]")) s = s.substring(0, s.length() - 1);
-        List<String[]> matrix = new ArrayList<>();
-        int depth = 0;
-        StringBuilder current = new StringBuilder();
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (c == '[') {
-                depth++;
-                current.append(c);
-            } else if (c == ']') {
-                depth--;
-                current.append(c);
-                if (depth == 0) {
-                    matrix.add(parseStringArray(current.toString()));
-                    current.setLength(0);
-                }
-            } else {
-                if (depth > 0) {
-                    current.append(c);
-                }
-            }
-        }
-        return matrix.toArray(new String[0][]);
+        return result.toArray(new String[0]);
     }
 `;
+    }
+
+    if (needs2DArray) {
+        helpers += `
+ private static int[][] parseVectorVectorInt(String s) {
+
+    s = s.trim().replaceAll(" ", "");
+
+    if (s.isEmpty() || s.equals("[]"))
+        return new int[0][];
+
+    if (s.startsWith("[") && s.endsWith("]"))
+        s = s.substring(1, s.length() - 1);
+
+    List<int[]> result = new ArrayList<>();
+
+    StringBuilder current = new StringBuilder();
+    int depth = 0;
+
+    for (char c : s.toCharArray()) {
+
+        if (c == '[')
+            depth++;
+
+        if (depth > 0)
+            current.append(c);
+
+        if (c == ']') {
+
+            depth--;
+
+            if (depth == 0) {
+
+                result.add(parseVectorInt(current.toString()));
+                current.setLength(0);
+
+            }
+        }
+    }
+
+    return result.toArray(new int[0][]);
+}
+`;
+    }
 
     if (needsListNode) {
         helpers += `
@@ -459,12 +453,10 @@ const generateJavaParsers = (parameters) => {
 `;
     }
 
-    return {
-        imports,
-        helpers,
-    };
+    return helpers;
 };
 
+// Generate C++ input reading code
 const generateCppInputReading = (parameters) => {
     let inputReading = "";
     const paramNames = [];
@@ -476,70 +468,28 @@ const generateCppInputReading = (parameters) => {
         const type = normalizeType(param.type);
 
         switch (type) {
+
             case "int[]":
+            case "vector<int>":
             case "array":
-            case "List<Integer>":
-            case "ArrayList<Integer>":
                 inputReading += `    string line${index};
     if (!getline(cin, line${index})) return 0;
-    vector<int> ${varName} = parseIntArray(line${index});
-`;
-                break;
-
-            case "long[]":
-            case "List<Long>":
-                inputReading += `    string line${index};
-    if (!getline(cin, line${index})) return 0;
-    vector<long long> ${varName} = parseLongArray(line${index});
-`;
-                break;
-
-            case "double[]":
-            case "List<Double>":
-                inputReading += `    string line${index};
-    if (!getline(cin, line${index})) return 0;
-    vector<double> ${varName} = parseDoubleArray(line${index});
-`;
-                break;
-
-            case "bool[]":
-            case "List<Boolean>":
-                inputReading += `    string line${index};
-    if (!getline(cin, line${index})) return 0;
-    vector<bool> ${varName} = parseBoolArray(line${index});
+    vector<int> ${varName} = parseVectorInt(line${index});
 `;
                 break;
 
             case "string[]":
             case "vector<string>":
-            case "List<String>":
-            case "ArrayList<String>":
                 inputReading += `    string line${index};
     if (!getline(cin, line${index})) return 0;
-    vector<string> ${varName} = parseStringArray(line${index});
+    vector<string> ${varName} = parseVectorString(line${index});
 `;
                 break;
 
             case "int[][]":
-            case "List<List<Integer>>":
                 inputReading += `    string line${index};
     if (!getline(cin, line${index})) return 0;
-    vector<vector<int>> ${varName} = parseIntMatrix(line${index});
-`;
-                break;
-
-            case "string[][]":
-                inputReading += `    string line${index};
-    if (!getline(cin, line${index})) return 0;
-    vector<vector<string>> ${varName} = parseStringMatrix(line${index});
-`;
-                break;
-
-            case "graph":
-            case "Graph":
-                inputReading += `    string line${index};
-    if (!getline(cin, line${index})) return 0;
-    vector<vector<int>> ${varName} = parseIntMatrix(line${index});
+    vector<vector<int>> ${varName} = parseVectorVectorInt(line${index});
 `;
                 break;
 
@@ -560,43 +510,40 @@ const generateCppInputReading = (parameters) => {
                 break;
 
             case "string":
-                inputReading += `    string line${index};
-    if (!getline(cin, line${index})) return 0;
-    string ${varName} = parseString(line${index});
+                inputReading += `    string ${varName};
+    if (!getline(cin, ${varName})) return 0;
 `;
                 break;
 
             case "bool":
-                inputReading += `    string line${index};
-    if (!getline(cin, line${index})) return 0;
-    line${index}.erase(0, line${index}.find_first_not_of(" \\t\\r\\n"));
-    line${index}.erase(line${index}.find_last_not_of(" \\t\\r\\n") + 1);
-    transform(line${index}.begin(), line${index}.end(), line${index}.begin(), ::tolower);
-    bool ${varName} = (line${index} == "true");
+                inputReading += `    string boolStr${index};
+    if (!getline(cin, boolStr${index})) return 0;
+    transform(boolStr${index}.begin(), boolStr${index}.end(), boolStr${index}.begin(), ::tolower);
+    bool ${varName} = (boolStr${index} == "true");
 `;
                 break;
 
             case "long":
             case "long long":
-                inputReading += `    string line${index};
-    if (!getline(cin, line${index})) return 0;
-    long long ${varName} = stoll(line${index});
+                inputReading += `    long long ${varName};
+    if (!(cin >> ${varName})) return 0;
+    cin.ignore(numeric_limits<streamsize>::max(), '\\n');
 `;
                 break;
 
             case "double":
             case "float":
-                inputReading += `    string line${index};
-    if (!getline(cin, line${index})) return 0;
-    double ${varName} = stod(line${index});
+                inputReading += `    double ${varName};
+    if (!(cin >> ${varName})) return 0;
+    cin.ignore(numeric_limits<streamsize>::max(), '\\n');
 `;
                 break;
 
             case "int":
             default:
-                inputReading += `    string line${index};
-    if (!getline(cin, line${index})) return 0;
-    int ${varName} = stoi(line${index});
+                inputReading += `    int ${varName};
+    if (!(cin >> ${varName})) return 0;
+    cin.ignore(numeric_limits<streamsize>::max(), '\\n');
 `;
                 break;
         }
@@ -608,109 +555,76 @@ const generateCppInputReading = (parameters) => {
     };
 };
 
+// Generate Java input reading code
 const generateJavaInputReading = (parameters) => {
     let inputReading = "";
     const paramNames = [];
 
     parameters.forEach((param, index) => {
+
         const varName = `param${index}`;
         paramNames.push(varName);
 
         const type = normalizeType(param.type);
 
         switch (type) {
+
             case "int[]":
             case "array":
-                inputReading += `        int[] ${varName} = parseIntArray(sc.nextLine());\n`;
-                break;
-
-            case "long[]":
-                inputReading += `        long[] ${varName} = parseLongArray(sc.nextLine());\n`;
-                break;
-
-            case "double[]":
-                inputReading += `        double[] ${varName} = parseDoubleArray(sc.nextLine());\n`;
-                break;
-
-            case "bool[]":
-                inputReading += `        boolean[] ${varName} = parseBoolArray(sc.nextLine());\n`;
+                inputReading += `        int[] ${varName} = parseVectorInt(sc.nextLine());
+`;
                 break;
 
             case "string[]":
-                inputReading += `        String[] ${varName} = parseStringArray(sc.nextLine());\n`;
-                break;
-
-            case "List<Integer>":
-            case "ArrayList<Integer>":
-                inputReading += `        List<Integer> ${varName} = parseIntegerList(sc.nextLine());\n`;
-                break;
-
-            case "List<Long>":
-                inputReading += `        List<Long> ${varName} = parseLongList(sc.nextLine());\n`;
-                break;
-
-            case "List<Double>":
-                inputReading += `        List<Double> ${varName} = parseDoubleList(sc.nextLine());\n`;
-                break;
-
-            case "List<Boolean>":
-                inputReading += `        List<Boolean> ${varName} = parseBooleanList(sc.nextLine());\n`;
-                break;
-
-            case "List<String>":
-            case "ArrayList<String>":
-                inputReading += `        List<String> ${varName} = parseStringList(sc.nextLine());\n`;
-                break;
-
-            case "List<List<Integer>>":
-                inputReading += `        List<List<Integer>> ${varName} = parseIntegerMatrixList(sc.nextLine());\n`;
+                inputReading += `        String[] ${varName} = parseVectorString(sc.nextLine());
+`;
                 break;
 
             case "int[][]":
-                inputReading += `        int[][] ${varName} = parseIntMatrix(sc.nextLine());\n`;
-                break;
-
-            case "string[][]":
-                inputReading += `        String[][] ${varName} = parseStringMatrix(sc.nextLine());\n`;
-                break;
-
-            case "graph":
-            case "Graph":
-                inputReading += `        List<List<Integer>> ${varName} = parseIntegerMatrixList(sc.nextLine());\n`;
+                inputReading += `        int[][] ${varName} = parseVectorVectorInt(sc.nextLine());
+`;
                 break;
 
             case "ListNode":
             case "listnode":
-                inputReading += `        ListNode ${varName} = parseList(sc.nextLine());\n`;
+                inputReading += `        ListNode ${varName} = parseList(sc.nextLine());
+`;
                 break;
 
             case "TreeNode":
             case "treenode":
-                inputReading += `        TreeNode ${varName} = parseTree(sc.nextLine());\n`;
+                inputReading += `        TreeNode ${varName} = parseTree(sc.nextLine());
+`;
                 break;
 
             case "string":
-                inputReading += `        String ${varName} = parseString(sc.nextLine());\n`;
+                inputReading += `        String ${varName} = sc.nextLine();
+`;
                 break;
 
             case "bool":
-                inputReading += `        boolean ${varName} = Boolean.parseBoolean(sc.nextLine().trim());\n`;
+                inputReading += `        boolean ${varName} = Boolean.parseBoolean(sc.nextLine().trim());
+`;
                 break;
 
             case "long":
-                inputReading += `        long ${varName} = Long.parseLong(sc.nextLine().trim());\n`;
+                inputReading += `        long ${varName} = Long.parseLong(sc.nextLine().trim());
+`;
                 break;
 
             case "double":
             case "float":
-                inputReading += `        double ${varName} = Double.parseDouble(sc.nextLine().trim());\n`;
+                inputReading += `        double ${varName} = Double.parseDouble(sc.nextLine().trim());
+`;
                 break;
 
             case "int":
             default:
-                inputReading += `        int ${varName} = Integer.parseInt(sc.nextLine().trim());\n`;
+                inputReading += `        int ${varName} = Integer.parseInt(sc.nextLine().trim());
+`;
                 break;
         }
+
     });
 
     return {
@@ -718,18 +632,20 @@ const generateJavaInputReading = (parameters) => {
         paramNames,
     };
 };
-
+// Generate Python input parsing code
 const generatePythonInputParsing = (parameters) => {
     let parsingCode = "";
     const paramNames = [];
 
     parameters.forEach((param, index) => {
+
         const varName = `param${index}`;
         paramNames.push(varName);
 
         const type = normalizeType(param.type);
 
         switch (type) {
+
             case "int[]":
             case "string[]":
             case "int[][]":
@@ -748,7 +664,7 @@ const generatePythonInputParsing = (parameters) => {
                 break;
 
             case "string":
-                parsingCode += `    ${varName} = json.loads(inputLines[${index}].strip())\n`;
+                parsingCode += `    ${varName} = inputLines[${index}]\n`;
                 break;
 
             case "bool":
@@ -766,6 +682,7 @@ const generatePythonInputParsing = (parameters) => {
                 parsingCode += `    ${varName} = int(inputLines[${index}].strip())\n`;
                 break;
         }
+
     });
 
     return {
@@ -774,17 +691,20 @@ const generatePythonInputParsing = (parameters) => {
     };
 };
 
+// Generate JavaScript input parsing code
 const generateJavascriptInputParsing = (parameters) => {
     let parsingCode = "";
     const paramNames = [];
 
     parameters.forEach((param, index) => {
+
         const varName = `param${index}`;
         paramNames.push(varName);
 
         const type = normalizeType(param.type);
 
         switch (type) {
+
             case "int[]":
             case "string[]":
             case "int[][]":
@@ -803,7 +723,7 @@ const generateJavascriptInputParsing = (parameters) => {
                 break;
 
             case "string":
-                parsingCode += `    const ${varName} = JSON.parse(inputLines[${index}].trim());\n`;
+                parsingCode += `    const ${varName} = inputLines[${index}];\n`;
                 break;
 
             case "bool":
@@ -818,6 +738,7 @@ const generateJavascriptInputParsing = (parameters) => {
                 parsingCode += `    const ${varName} = Number(inputLines[${index}].trim());\n`;
                 break;
         }
+
     });
 
     return {

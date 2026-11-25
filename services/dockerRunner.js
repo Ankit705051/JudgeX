@@ -18,6 +18,16 @@ const SANDBOX_DIR = path.join(os.tmpdir(), "judgex");
 
 const MAX_OUTPUT_BYTES = 1024 * 1024;
 
+// Timeouts are env-configurable. Compilation includes nlohmann/json.hpp for
+// C++ and a from-source Gson build for Java, both of which need far more than
+// the old hardcoded 10s on small instances.
+const COMPILE_TIMEOUT_S = Number(process.env.COMPILE_TIMEOUT_S) || 60;
+const RUN_TIMEOUT_S = Number(process.env.RUN_TIMEOUT_S) || 5;
+const COMPILE_EXEC_MS =
+    Number(process.env.COMPILE_EXEC_TIMEOUT_MS) || (COMPILE_TIMEOUT_S + 60) * 1000;
+const RUN_EXEC_MS =
+    Number(process.env.RUN_EXEC_TIMEOUT_MS) || (RUN_TIMEOUT_S + 15) * 1000;
+
 const DOCKER_FLAGS = [
     "--rm",
     "--network=none",
@@ -36,162 +46,186 @@ function truncate(text) {
         : text;
 }
 
-export const executeCode = async (code, languageId, stdin) => {
+async function copyVendorFiles(jobDir) {
+    const jsonHeaderSrc = path.join(
+        process.cwd(),
+        "services",
+        "codeBuilder",
+        "vendor",
+        "nlohmann",
+        "json.hpp"
+    );
+    const jsonHeaderDest = path.join(jobDir, "nlohmann", "json.hpp");
+    await fs.mkdir(path.dirname(jsonHeaderDest), { recursive: true });
+    await fs.copyFile(jsonHeaderSrc, jsonHeaderDest);
+
+    const gsonSourceSrc = path.join(
+        process.cwd(),
+        "services",
+        "codeBuilder",
+        "vendor",
+        "gson",
+        "src",
+        "com",
+        "google",
+        "gson",
+        "Gson.java"
+    );
+    const gsonSourceDest = path.join(jobDir, "com", "google", "gson", "Gson.java");
+    await fs.mkdir(path.dirname(gsonSourceDest), { recursive: true });
+    await fs.copyFile(gsonSourceSrc, gsonSourceDest);
+}
+
+function dockerRunCmd(runner, jobDir, shellCmd) {
+    return `docker run ${DOCKER_FLAGS} -v "${jobDir}:/sandbox" -w /sandbox ${runner.image} sh -c "${shellCmd}"`;
+}
+
+function runCommandFor(runner, filename) {
+    switch (runner.name) {
+        case "cpp":
+            return "./main";
+        case "java":
+            return "java -cp .:gson.jar Main";
+        case "python":
+            return `python3 ${filename}`;
+        case "javascript":
+            return `node ${filename}`;
+        default:
+            throw new Error(`Unknown runner: ${runner.name}`);
+    }
+}
+
+/**
+ * Prepare a submission: create the sandbox dir, write the source, and compile
+ * once. Returns { ok: true, job } or { ok: false, status, compileOutput?, cleanup }.
+ * Call job.cleanup() when all testcases are done.
+ */
+export const prepareSubmission = async (code, languageId) => {
     const runner = RUNNERS[languageId];
 
     if (!runner) {
-        throw new Error(`Unsupported language ID: ${languageId}`);
+        return {
+            ok: false,
+            status: { id: 13 },
+            message: `Unsupported language ID: ${languageId}`,
+        };
     }
 
     const jobId = crypto.randomUUID();
     const jobDir = path.join(SANDBOX_DIR, jobId);
 
+    const cleanup = async () => {
+        try {
+            await fs.rm(jobDir, { recursive: true, force: true });
+        } catch (e) {
+            console.error("Cleanup error:", e);
+        }
+    };
+
     try {
         await fs.mkdir(jobDir, { recursive: true });
+        await copyVendorFiles(jobDir);
 
-       const jsonHeaderSrc = path.join(
-                process.cwd(),
-                "services",
-                "codeBuilder",
-                "vendor",
-                "nlohmann",
-                "json.hpp"
-            );
-        const jsonHeaderDest = path.join(jobDir, "nlohmann", "json.hpp");
-        await fs.mkdir(path.dirname(jsonHeaderDest), { recursive: true });
-        await fs.copyFile(jsonHeaderSrc, jsonHeaderDest);
-
-      const gsonSourceSrc = path.join(
-            process.cwd(),
-            "services",
-            "codeBuilder",
-            "vendor",
-            "gson",
-            "src",
-            "com",
-            "google",
-            "gson",
-            "Gson.java"
-        );
-        const gsonSourceDest = path.join(jobDir, "com", "google", "gson", "Gson.java");
-        await fs.mkdir(path.dirname(gsonSourceDest), { recursive: true });
-        await fs.copyFile(gsonSourceSrc, gsonSourceDest);
-
-        let filename = `main.${runner.extension}`;
-
-        if (runner.name === "java") {
-            filename = "Main.java";
-        }
-
+        const filename = runner.name === "java" ? "Main.java" : `main.${runner.extension}`;
         await fs.writeFile(path.join(jobDir, filename), code);
-        await fs.writeFile(path.join(jobDir, "input.txt"), stdin || "");
 
         let compileCmd = "";
-        let executeCmd = "";
-
         switch (runner.name) {
             case "cpp":
-                compileCmd = `timeout 10s g++ ${filename} -o main`;
-                executeCmd = `timeout 2s ./main < input.txt`;
+                compileCmd = `timeout ${COMPILE_TIMEOUT_S}s g++ ${filename} -o main`;
                 break;
-
             case "java":
-                compileCmd = `timeout 10s javac -d gson_build com/google/gson/Gson.java && timeout 10s jar cf gson.jar -C gson_build . && timeout 10s javac -cp gson.jar Main.java`;
-                executeCmd = `timeout 2s java -cp .:gson.jar Main < input.txt`;
-                break;
-
-            case "python":
-                executeCmd = `timeout 2s python3 ${filename} < input.txt`;
-                break;
-
-            case "javascript":
-                executeCmd = `timeout 2s node ${filename} < input.txt`;
+                compileCmd =
+                    `timeout ${COMPILE_TIMEOUT_S}s javac -d gson_build com/google/gson/Gson.java` +
+                    ` && timeout ${COMPILE_TIMEOUT_S}s jar cf gson.jar -C gson_build .` +
+                    ` && timeout ${COMPILE_TIMEOUT_S}s javac -cp gson.jar ${filename}`;
                 break;
         }
-
-        // ---------------- COMPILE ----------------
 
         if (compileCmd) {
             try {
-                const dockerCompile = `docker run ${DOCKER_FLAGS} -v "${jobDir}:/sandbox" -w /sandbox ${runner.image} sh -c "${compileCmd}"`;
-
-                await execAsync(dockerCompile, {
-                    timeout: 30000,
+                await execAsync(dockerRunCmd(runner, jobDir, compileCmd), {
+                    timeout: COMPILE_EXEC_MS,
                     maxBuffer: MAX_OUTPUT_BYTES,
                 });
-
             } catch (err) {
-
                 if (err.code === 124 || err.killed) {
                     return {
+                        ok: false,
                         status: { id: 5 },
-                        compile_output: "Compilation timed out",
+                        compileOutput: "Compilation timed out",
+                        cleanup,
                     };
                 }
-
                 return {
+                    ok: false,
                     status: { id: 6 },
-                    compile_output: truncate(
-                        err.stderr || err.stdout || err.message
-                    ),
+                    compileOutput: truncate(err.stderr || err.stdout || err.message),
+                    cleanup,
                 };
             }
         }
 
-        // ---------------- EXECUTE ----------------
+        return {
+            ok: true,
+            job: { runner, jobDir, filename, cleanup },
+        };
+    } catch (err) {
+        await cleanup();
+        return {
+            ok: false,
+            status: { id: 13 },
+            message: err.message,
+        };
+    }
+};
+
+/**
+ * Run one testcase against a prepared job. Each call uses a unique input file
+ * so concurrent testcases in the same jobDir don't clobber each other.
+ */
+export const runCompiled = async (job, stdin) => {
+    const { runner, jobDir, filename } = job;
+    const inputName = `input_${crypto.randomUUID()}.txt`;
+    const inputPath = path.join(jobDir, inputName);
+
+    try {
+        await fs.writeFile(inputPath, stdin || "");
+
+        const executeCmd = `timeout ${RUN_TIMEOUT_S}s ${runCommandFor(runner, filename)} < ${inputName}`;
 
         try {
-            const dockerExecute = `docker run ${DOCKER_FLAGS} -v "${jobDir}:/sandbox" -w /sandbox ${runner.image} sh -c "${executeCmd}"`;
-
-            const { stdout, stderr } = await execAsync(dockerExecute, {
-                timeout: 15000,
-                maxBuffer: MAX_OUTPUT_BYTES,
-            });
+            const { stdout, stderr } = await execAsync(
+                dockerRunCmd(runner, jobDir, executeCmd),
+                { timeout: RUN_EXEC_MS, maxBuffer: MAX_OUTPUT_BYTES }
+            );
 
             return {
                 status: { id: 3 },
                 stdout: truncate(stdout),
                 stderr: truncate(stderr),
             };
-
         } catch (err) {
-
             const output = `${err.stdout || ""}${err.stderr || ""}`;
 
-            if (
-                err.code === 124 ||
-                err.killed ||
-                output.includes("124")
-            ) {
-                return {
-                    status: { id: 5 },
-                };
+            if (err.code === 124 || err.killed || output.includes("124")) {
+                return { status: { id: 5 } };
             }
 
             return {
                 status: { id: 7 },
-                stderr: truncate(
-                    err.stderr || err.stdout || err.message
-                ),
+                stderr: truncate(err.stderr || err.stdout || err.message),
             };
         }
-
     } catch (err) {
-
         console.error("Execution error:", err);
-
         return {
             status: { id: 13 },
             message: err.message,
         };
-
     } finally {
-
         try {
-            await fs.rm(jobDir, {
-                recursive: true,
-                force: true,
-            });
+            await fs.rm(inputPath, { force: true });
         } catch (e) {
             console.error("Cleanup error:", e);
         }
